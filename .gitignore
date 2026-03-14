@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+
+# BOTC runtime data
+backend/data/botc.db
+backend/data/images/*
+!backend/data/images/.gitkeep
+
+# OS/editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo

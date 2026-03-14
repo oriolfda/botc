@@ -2,25 +2,37 @@ from fastapi import FastAPI, Form, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import sqlite3, os, shutil
+import sqlite3, os, shutil, uuid
+from pathlib import Path
 
 app = FastAPI()
+
+# --- Config ---
+DB_PATH = os.getenv("BOTC_DB_PATH", "data/botc.db")
+IMG_DIR = os.getenv("BOTC_IMG_DIR", "data/images")
+Path(IMG_DIR).mkdir(parents=True, exist_ok=True)
+
+cors_origins_env = os.getenv("BOTC_CORS_ORIGINS", "*").strip()
+if cors_origins_env == "*":
+    allow_origins = ["*"]
+else:
+    allow_origins = [o.strip() for o in cors_origins_env.split(",") if o.strip()]
 
 # --- CORS ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],           # Accepta totes
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-DB_PATH = "data/botc.db"
-IMG_DIR = "data/images"
-os.makedirs(IMG_DIR, exist_ok=True)
 
 def db_conn():
-    return sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
+    return conn
 
 # --- Init DB ---
 with db_conn() as conn:
@@ -52,7 +64,9 @@ with db_conn() as conn:
         id INTEGER PRIMARY KEY,
         name VARCHAR NOT NULL,
         group_id INTEGER,
-        event_id INTEGER NOT NULL
+        event_id INTEGER NOT NULL,
+        FOREIGN KEY(event_id) REFERENCES events(id) ON DELETE CASCADE,
+        FOREIGN KEY(group_id) REFERENCES groups(id) ON DELETE SET NULL
     )
     """)
     c.execute("""
@@ -61,6 +75,10 @@ with db_conn() as conn:
         admin_password VARCHAR NOT NULL
     )
     """)
+    c.execute("CREATE INDEX IF NOT EXISTS idx_events_group_id ON events(group_id)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_participants_event_id ON participants(event_id)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_participants_group_id ON participants(group_id)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_events_codeEvt ON events(codeEvt)")
     conn.commit()
 
 # --- MODELS ---
@@ -123,10 +141,15 @@ async def create_event(
     # només name és obligatori
     image_url = None
     if image and image.filename:
-        file_path = os.path.join(IMG_DIR, image.filename)
+        safe_name = Path(image.filename).name
+        ext = Path(safe_name).suffix.lower()
+        if ext not in {".jpg", ".jpeg", ".png", ".webp", ".gif"}:
+            raise HTTPException(status_code=400, detail="Unsupported image format")
+        stored_name = f"{uuid.uuid4().hex}{ext}"
+        file_path = os.path.join(IMG_DIR, stored_name)
         with open(file_path, "wb") as f:
             shutil.copyfileobj(image.file, f)
-        image_url = f"/images/{image.filename}"
+        image_url = f"/images/{stored_name}"
 
     with db_conn() as conn:
         c = conn.cursor()
@@ -153,10 +176,15 @@ async def update_event(
 ):
     image_url = None
     if image and image.filename:
-        file_path = os.path.join(IMG_DIR, image.filename)
+        safe_name = Path(image.filename).name
+        ext = Path(safe_name).suffix.lower()
+        if ext not in {".jpg", ".jpeg", ".png", ".webp", ".gif"}:
+            raise HTTPException(status_code=400, detail="Unsupported image format")
+        stored_name = f"{uuid.uuid4().hex}{ext}"
+        file_path = os.path.join(IMG_DIR, stored_name)
         with open(file_path, "wb") as f:
             shutil.copyfileobj(image.file, f)
-        image_url = f"/images/{image.filename}"
+        image_url = f"/images/{stored_name}"
 
     with db_conn() as conn:
         c = conn.cursor()
@@ -206,6 +234,16 @@ async def create_group(name: str = Form(...), codeUsr: str = Form(None), codeAdm
         c.execute("INSERT INTO groups (name, codeUsr, codeAdm) VALUES (?, ?, ?)", (name, codeUsr, codeAdm))
         conn.commit()
     return {"status": "created"}
+
+@app.get("/groups/{group_id}")
+async def get_group(group_id: int):
+    with db_conn() as conn:
+        c = conn.cursor()
+        c.execute("SELECT * FROM groups WHERE id=?", (group_id,))
+        row = c.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Group not found")
+        return dict(row)
 
 @app.delete("/groups/{group_id}")
 @app.delete("/api/groups/{group_id}")
