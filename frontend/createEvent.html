@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Crear / Editar Event</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial;background:#121212;color:#f0f0f0;padding:20px}
+h2{color:#2e8b57;margin-bottom:10px;text-align:center}
+form{display:flex;flex-direction:column;gap:10px;max-width:500px;margin:auto}
+input,select,textarea{padding:10px;border-radius:6px;border:1px solid #444;background:#222;color:#fff;width:100%}
+button{background:#2e8b57;color:#fff;border:none;padding:10px;border-radius:6px;cursor:pointer}
+.success{color:#4caf50;margin-top:8px;text-align:center}
+.error{color:#ff6b6b;margin-top:8px;text-align:center}
+</style>
+</head>
+<body>
+<h2>Crear / Editar Event</h2>
+
+<form id="eventForm" enctype="multipart/form-data">
+  <input type="text" name="name" id="name" placeholder="Nom de l'event" required>
+  <input type="text" name="date" id="date" placeholder="Data (ex: 1 de novembre - 17h)">
+  <input type="text" name="location" id="location" placeholder="Ubicació">
+  <select name="group_id" id="groupSelect">
+    <option value="">-- Sense grup --</option>
+  </select>
+  <input type="number" name="min_participants" id="min_participants" placeholder="Participants mínims">
+  <input type="number" name="max_participants" id="max_participants" placeholder="Participants màxims">
+  <select name="status" id="status">
+    <option value="active">Actiu</option>
+    <option value="inactive">Inactiu</option>
+  </select>
+  <input type="text" name="codeEvt" id="codeEvt" placeholder="Codi d'accés a l'event (opcional)">
+  <input type="file" name="image" id="image">
+  <button type="submit">Desar</button>
+</form>
+
+<div id="msg"></div>
+
+<script>
+const isInternalIP = window.location.hostname.startsWith("192.168.") || window.location.hostname === "localhost";
+const API_BASE = isInternalIP ? "http://192.168.0.210:30081" : window.location.origin;
+const API_PREFIX = isInternalIP ? "" : "/api";
+
+const params = new URLSearchParams(window.location.search);
+const eventId = params.get("event_id");
+
+async function loadGroups(){
+  const sel=document.getElementById('groupSelect');
+  try{
+    const res=await fetch(`${API_BASE}${API_PREFIX}/groups`);
+    if(!res.ok) throw new Error("No s'han pogut carregar els grups");
+    const g=await res.json();
+    g.forEach(gr=>{
+      const opt=document.createElement('option');
+      opt.value=gr.id;
+      opt.textContent=gr.name;
+      sel.appendChild(opt);
+    });
+  }catch(e){console.error(e);}
+}
+
+async function loadEvent(){
+  if(!eventId) return;
+  try{
+    const res=await fetch(`${API_BASE}${API_PREFIX}/events/${eventId}`);
+    if(!res.ok) return;
+    const ev=await res.json();
+    document.getElementById('name').value=ev.name||"";
+    document.getElementById('date').value=ev.date||"";
+    document.getElementById('location').value=ev.location||"";
+    document.getElementById('groupSelect').value=ev.group_id||"";
+    document.getElementById('min_participants').value=ev.min_participants||"";
+    document.getElementById('max_participants').value=ev.max_participants||"";
+    document.getElementById('status').value=ev.status||"active";
+    document.getElementById('codeEvt').value=ev.codeEvt||"";
+  }catch(e){console.error(e);}
+}
+
+document.getElementById("eventForm").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  const msg=document.getElementById("msg");
+  msg.textContent=""; msg.className="";
+  const formData=new FormData(e.target);
+
+  // 🔧 Elimina camps buits que no són obligatoris
+  ["group_id","min_participants","max_participants","codeEvt"].forEach(k=>{
+    if(!formData.get(k)) formData.delete(k);
+  });
+
+  if(!formData.get("name")){
+    msg.textContent="El nom és obligatori";
+    msg.className="error";
+    return;
+  }
+
+  const url=`${API_BASE}${API_PREFIX}/events${eventId?"/"+eventId:""}`;
+  const method=eventId?"PUT":"POST";
+  try{
+    const res=await fetch(url,{method,body:formData});
+    if(!res.ok){
+      const t=await res.text();
+      throw new Error(t);
+    }
+    msg.textContent="Event desat correctament";
+    msg.className="success";
+  }catch(err){
+    console.error(err);
+    msg.textContent="Error al desar l'event";
+    msg.className="error";
+  }
+});
+
+(async function(){await loadGroups();await loadEvent();})();
+</script>
+</body>
+</html>
+

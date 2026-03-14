@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Participants</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial;background:#121212;color:#f0f0f0;padding:12px}
+.header{display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:10px; flex-wrap:wrap; gap:6px; }
+.header-left{display:flex; flex-direction:column; justify-content:center; }
+.header-center{display:flex; flex-direction:column; align-items:center;font-size:0.6rem;}
+.header-right{display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+.container{max-width:800px;margin:0 auto}
+.form{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.formLine{display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:6px}
+input,select{padding:10px;border-radius:6px;border:1px solid #444;background:#222;color:#fff}
+button.add{background:#2e8b57;color:#fff;border:none;padding:10px;border-radius:6px;cursor:pointer}
+a.back{background:#2e8b57;color:#fff;border:none;padding:6px;border-radius:6px;cursor:pointer;font-size:0.8rem;text-decoration:none;}
+.list{display:flex;flex-direction:column;gap:8px}
+.card{background:#2d2d2d;padding:6px;border-radius:8px;display:flex;justify-content:space-between;align-items:center}
+.deleteBtn{width:30px;height:30px;border-radius:6px;background:#dc3545;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.deleteBtn svg{width:16px;height:16px;fill:white}
+@media(max-width:520px){.form{flex-direction:column}
+.roleinfo{font-size:0.8rem;color:#999;text-align:right;margin-bottom:6px}
+#eventClosed{font-size:1em;color:#dc3545;visibility:hidden}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-left">
+    <h2 style="color:#2e8b57">Participants</h2>
+  </div>
+
+  <div class="header-center">
+    <div id="roleInfo" class="roleinfo"></div>
+  </div>
+
+  <div class="header-right">
+    <a class="back" href="events.html">Enrere</a>
+  </div>
+</div>
+
+<div class="container">
+  <div id="eventInfo" style="margin-bottom:8px"></div>
+  <div class="form">
+    <input id="pName" placeholder="Nom participant">
+    <div class="formLine">
+      <select id="pGroup"></select>
+      <div id="btAdd"><button class="add" id="addBtn">Afegir</button></div>
+      <div id="eventClosed">PARTIDA TANCADA</div>
+    </div>
+  </div>
+  <div class="list" id="list"></div>
+</div>
+
+<script>
+const params=new URLSearchParams(location.search);
+const event_id=params.get('event_id')||params.get('eventId');
+const isInternal=location.hostname.startsWith("192.168.")||location.hostname==="localhost";
+const API_BASE=isInternal?"http://192.168.0.210:30081":"";
+const API_PREFIX=isInternal?"":"/api";
+const access=JSON.parse(localStorage.getItem('botc-access')||'null');
+var group_id = "";
+if(access) document.getElementById('roleInfo').textContent=`${access.role}${access.group?' · '+access.group:''}`;
+
+function deleteSvg(){return `<svg viewBox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><path fill="white" d="M432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.9a24 24 0 0 0-21.5 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0-16-16zM53.2 467a48 48 0 0 0 47.9 45h246.6a48 48 0 0 0 47.9-45L416 128H32l21.2 339z"/></svg>`;}
+
+async function loadGroups(){
+  const sel=document.getElementById('pGroup'); sel.innerHTML='';
+  try{
+    const res=await fetch(`${API_BASE}${API_PREFIX}/groups`);
+    const g=await res.json(); if(!Array.isArray(g)) return;
+    g.forEach(it=>{
+
+      const o=document.createElement('option');
+      o.value=it.id; o.textContent=it.name;
+      if(access && access.group_id && access.group_id===it.id && access.role==="user") o.selected=true;
+      sel.appendChild(o);
+    });
+    if(access && access.role==="user") sel.disabled=true;
+  }catch(e){}
+}
+
+async function loadEvent(){
+  try{
+    const res=await fetch(`${API_BASE}${API_PREFIX}/events/${event_id}`);
+    const ev=await res.json();
+    document.getElementById('eventInfo').innerHTML=`<strong>${ev.name}</strong><div style="color:#bbb">${ev.date||''} ${ev.location?'- '+ev.location:''}</div><div style="display:flex;justify-content:center;color:#bbb"><small>Min: ${ev.min_participants} / Max: ${ev.max_participants} / Actuals ${ev.participant_count}</small></div>`;
+    const maxParticipants = ev.max_participants;
+    const participantsCount = ev.participant_count;
+    const group_id2 = ev.group_id;
+    console.log("group_id2:"+group_id2);
+    group_id = group_id2;
+    console.log("group_id:"+group_id);
+    if(participantsCount>=maxParticipants){document.getElementById("btAdd").style.visibility="hidden";document.getElementById("eventClosed").style.visibility="visible";document.getElementById("eventClosed").style.color="#dc3545";}else{document.getElementById("btAdd").style.visibility="visible";document.getElementById("eventClosed").style.visibility="hidden";};
+  }catch(e){}
+}
+
+async function loadParticipants(){
+  const container=document.getElementById('list');container.innerHTML='Carregant...';
+  try{
+    const res=await fetch(`${API_BASE}${API_PREFIX}/participants/${event_id}`);
+    const parts=await res.json();
+    container.innerHTML='';
+    parts.forEach(p=>{
+      console.log(group_id);
+      const canDelete=(access?.role==='superadmin')||(access?.role==='admin' && access?.group_id===group_id);
+      
+/*      const canDelete=(access?.role==='superadmin')||(access?.role==='admin' && access?.group_id===p.group_id && p.event_id==event_id);*/
+
+      const d=document.createElement('div');d.className='card';
+      d.innerHTML=`<div>${p.name} <small style="color:#bbb">(${p.group_name||'-'})</small></div>`;
+      if(canDelete){
+        const del=document.createElement('button');del.className='deleteBtn';del.innerHTML=deleteSvg();
+        del.onclick=async()=>{await fetch(`${API_BASE}${API_PREFIX}/participants/${p.id}`,{method:'DELETE'});loadEvent();loadParticipants();};
+        d.appendChild(del);
+      }
+      container.appendChild(d);
+    });
+    if(parts.length===0) container.innerHTML='No hi ha participants';
+ /*   const res2=await fetch(`${API_BASE}${API_PREFIX}/events/${event_id}`);
+    const ev2=await res.json();
+    const maxParticipants2 = ev2.maxParticipants;
+    const participantsCount2 = ev2.participant_count;
+    if(participantsCount2>=maxParticipants2){document.getElementById("addBtn").disabled=true;}else{document.getElementById("addBtn").disabled=false;}*/
+  }catch(e){container.innerHTML='Error';}
+}
+
+document.getElementById('addBtn').addEventListener('click',async()=>{
+  const name=document.getElementById('pName').value.trim();
+  const group=document.getElementById('pGroup').value||'';
+  if(!name)return;
+  const fd=new FormData();fd.append('name',name);fd.append('event_id',event_id);if(group)fd.append('group_id',group);
+  await fetch(`${API_BASE}${API_PREFIX}/participants`,{method:'POST',body:fd});
+  document.getElementById('pName').value='';loadEvent();loadParticipants();
+});
+
+(async()=>{await loadGroups();await loadEvent();await loadParticipants();})();
+</script>
+</body>
+</html>

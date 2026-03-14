@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Spotijoc</title>
+<style>
+body {
+  background: black;
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  font-family: Arial;
+}
+button {
+  font-size: 40px;
+  padding: 30px 60px;
+  background: #1DB954;
+  border: none;
+  border-radius: 20px;
+  color: white;
+}
+</style>
+</head>
+<body>
+
+<button id="playBtn">PLAY</button>
+<script>
+const clientId = "ae43ff04bc0e4c5ca3a3d002d90ced3b";
+
+const redirectUri = "https://botc-uriester.duckdns.org/spotijoc.html";
+const scopes = "user-modify-playback-state user-read-playback-state";
+
+function getHashParams() {
+  const hash = window.location.hash.substring(1);
+  return hash.split('&').reduce((acc, item) => {
+    if (item) {
+      const parts = item.split('=');
+      acc[parts[0]] = decodeURIComponent(parts[1]);
+    }
+    return acc;
+  }, {});
+}
+
+function login() {
+  const authUrl =
+    "https://accounts.spotify.com/authorize" +
+    "?response_type=token" +
+    "&client_id=" + clientId +
+    "&scope=" + encodeURIComponent(scopes) +
+    "&redirect_uri=" + encodeURIComponent(redirectUri);
+  window.location = authUrl;
+}
+
+async function playTrack(trackId, token) {
+  await fetch("https://api.spotify.com/v1/me/player/play", {
+    method: "PUT",
+    headers: {
+      "Authorization": "Bearer " + token,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      uris: ["spotify:track:" + trackId]
+    })
+  });
+}
+
+// 🔥 GESTIÓ TOKEN CORRECTA
+
+const hashParams = getHashParams();
+
+if (hashParams.access_token) {
+  localStorage.setItem("spotify_token", hashParams.access_token);
+  window.location.hash = ""; // elimina hash per evitar loop
+}
+
+let token = localStorage.getItem("spotify_token");
+
+if (!token) {
+  login();
+}
+
+const params = new URLSearchParams(window.location.search);
+const trackId = params.get("id");
+
+document.getElementById("playBtn").onclick = async () => {
+  if (!trackId) {
+    alert("No track id");
+    return;
+  }
+  await playTrack(trackId, token);
+};
+</script>
+
+
+
+</body>
+</html>

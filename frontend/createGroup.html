@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Gestió de Grups</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial;background:#121212;color:#f0f0f0;padding:12px}
+h2{color:#2e8b57;margin-bottom:12px;text-align:center}
+.form{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:14px}
+input{padding:10px;border-radius:6px;border:1px solid #444;background:#222;color:#fff}
+button{padding:10px 14px;border:none;border-radius:6px;cursor:pointer}
+button.add{background:#2e8b57;color:#fff}
+.list{display:flex;flex-direction:column;gap:8px;max-width:800px;margin:auto}
+.card{background:#2d2d2d;padding:10px;border-radius:8px;display:flex;justify-content:space-between;align-items:center}
+.deleteBtn{background:#dc3545;display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:6px;border:none;cursor:pointer}
+.deleteBtn svg{width:16px;height:16px;fill:white}
+</style>
+</head>
+<body>
+<h2>Gestió de Grups</h2>
+<div class="form">
+  <input id="gName" placeholder="Nom del grup">
+  <input id="codeUsr" placeholder="Codi Usuari">
+  <input id="codeAdm" placeholder="Codi Admin">
+  <button class="add" id="addBtn">Afegir Grup</button>
+</div>
+<div class="list" id="list"></div>
+
+<script>
+const isInternal = location.hostname.startsWith("192.168.") || location.hostname==="localhost";
+const API_BASE = isInternal ? "http://192.168.0.210:30081" : "";
+const API_PREFIX = isInternal ? "" : "/api";
+
+function deleteSvg(){return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path fill="white" d="M432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.9a24 24 0 0 0-21.5 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0-16-16zM53.2 467a48 48 0 0 0 47.9 45h246.6a48 48 0 0 0 47.9-45L416 128H32l21.2 339z"/></svg>`;}
+
+async function loadGroups(){
+  const list=document.getElementById('list');
+  try{
+    const res=await fetch(`${API_BASE}${API_PREFIX}/groups`);
+    if(!res.ok) return list.innerHTML='Error carregant grups';
+    const groups=await res.json();
+    list.innerHTML='';
+    groups.forEach(g=>{
+      const d=document.createElement('div');d.className='card';
+      d.innerHTML=`<div><strong>${g.name}</strong> <small style="color:#aaa">(${g.codeUsr||'-'}/${g.codeAdm||'-'})</small></div>`;
+      const b=document.createElement('button');b.className='deleteBtn';b.innerHTML=deleteSvg();
+      b.onclick=async()=>{if(confirm('Eliminar grup?')){await fetch(`${API_BASE}${API_PREFIX}/groups/${g.id}`,{method:'DELETE'});loadGroups();}};
+      d.appendChild(b);list.appendChild(d);
+    });
+    if(groups.length===0) list.innerHTML='No hi ha grups';
+  }catch(e){list.innerHTML='Error carregant';}
+}
+
+document.getElementById('addBtn').addEventListener('click',async()=>{
+  const name=document.getElementById('gName').value.trim();
+  const usr=document.getElementById('codeUsr').value.trim();
+  const adm=document.getElementById('codeAdm').value.trim();
+  if(!name) return;
+  const fd=new FormData();fd.append('name',name);if(usr)fd.append('codeUsr',usr);if(adm)fd.append('codeAdm',adm);
+  await fetch(`${API_BASE}${API_PREFIX}/groups`,{method:'POST',body:fd});
+  document.getElementById('gName').value=document.getElementById('codeUsr').value=document.getElementById('codeAdm').value='';
+  loadGroups();
+});
+
+loadGroups();
+</script>
+</body>
+</html>

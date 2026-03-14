@@ -1,0 +1,178 @@
+body {
+  font-family: Arial, sans-serif;
+  background: #1a1a1a;
+  margin: 0;
+  padding: 2rem;
+  text-align: center;
+  background-size: cover;
+  background-position: center;
+  color: #e0e0e0;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+h1 {
+  color: #ffffff;
+}
+
+form {
+  margin: 1rem auto;
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+input, select, button {
+  padding: 0.5rem;
+  font-size: 1rem;
+  background: #2d2d2d;
+  color: #e0e0e0;
+  border: 1px solid #555;
+  border-radius: 4px;
+}
+
+input::placeholder {
+  color: #999;
+}
+
+button {
+  background-color: #2e8b57;
+  color: white;
+  border: none;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+button:hover {
+  background-color: #256c47;
+}
+
+#eventList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.event-card {
+  border: 1px solid #444;
+  padding: 1rem;
+  border-radius: 8px;
+  background: #2d2d2d;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  color: #e0e0e0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.event-card img {
+  width: 100%;
+  border-radius: 6px;
+  height: 200px;
+  object-fit: cover;
+}
+
+#participantTable {
+  margin: 1rem auto;
+  border-collapse: collapse;
+  background: #2d2d2d;
+  color: #e0e0e0;
+}
+
+#participantTable th, #participantTable td {
+  border-bottom: 1px solid #444;
+  padding: 0.3rem 0.8rem;
+}
+
+#participantTable td:last-child {
+  width: 40px;
+}
+
+/* CSS específic per formulari vertical */
+.form-vertical {
+  display: block !important;
+  max-width: 600px;
+  margin: 1rem auto;
+  text-align: left;
+}
+
+.form-vertical > div {
+  margin-bottom: 15px;
+}
+
+.form-vertical label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: #ffffff;
+}
+
+.form-vertical input,
+.form-vertical select,
+.form-vertical textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #2d2d2d;
+  color: #e0e0e0;
+}
+
+.form-vertical textarea::placeholder,
+.form-vertical input::placeholder {
+  color: #999;
+}
+
+/* Estils per createGroup.html */
+.delete-btn {
+  background-color: #dc3545;
+  border: none;
+  color: white;
+  border-radius: 6px;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+.delete-btn:hover { 
+  background-color: #b52a36; 
+}
+.delete-btn svg { 
+  width: 16px; 
+  height: 16px; 
+  display: block; 
+}
+
+/* Responsive per mòbils */
+@media (max-width: 768px) {
+  #eventList {
+    display: block;
+    max-width: 100%;
+    padding: 0;
+  }
+  
+  .event-card {
+    width: 100%;
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+  }
+  
+  .event-card:last-child {
+    margin-bottom: 0;
+  }
+  
+  body {
+    padding: 1rem;
+  }
+  
+  h1 {
+    margin-bottom: 2rem;
+  }
+}
