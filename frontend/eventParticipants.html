@@ -24,6 +24,7 @@ a.back{background:#2e8b57;color:#fff;border:none;padding:6px;border-radius:6px;c
 .roleinfo{font-size:0.8rem;color:#999;text-align:right;margin-bottom:6px}
 #eventClosed{font-size:1em;color:#dc3545;visibility:hidden}
 </style>
+<script src="env.js"></script>
 </head>
 <body>
 <div class="header">
@@ -54,11 +55,27 @@ a.back{background:#2e8b57;color:#fff;border:none;padding:6px;border-radius:6px;c
 </div>
 
 <script>
-const params=new URLSearchParams(location.search);
-const event_id=params.get('event_id')||params.get('eventId');
-const isInternal=location.hostname.startsWith("192.168.")||location.hostname==="localhost";
-const API_BASE=isInternal?"http://192.168.0.210:30081":"";
-const API_PREFIX=isInternal?"":"/api";
+const BOTC_CONFIG = window.BOTC_CONFIG || {};
+const urlEnv = new URLSearchParams(window.location.search).get("env");
+const ENV = (urlEnv || BOTC_CONFIG.ENV || "AUTO").toUpperCase();
+const BOTC_CONFIG = window.BOTC_CONFIG || {};
+const urlEnv = new URLSearchParams(window.location.search).get("env");
+const ENV = (urlEnv || BOTC_CONFIG.ENV || "AUTO").toUpperCase();
+const isInternal = location.hostname.startsWith("192.168.") || location.hostname === "localhost";
+
+function resolveApiBase(){
+  if (BOTC_CONFIG.API_BASE) {
+    return { base: BOTC_CONFIG.API_BASE, prefix: BOTC_CONFIG.API_PREFIX ?? "" };
+  }
+  if (!isInternal) return { base: window.location.origin, prefix: "/api" };
+  if (ENV === "PROD") return { base: "http://192.168.0.210:30081", prefix: "" };
+  if (ENV === "TEST") return { base: "http://192.168.0.210:30082", prefix: "" };
+  if (location.port === "30084") return { base: "http://192.168.0.210:30082", prefix: "" };
+  if (location.port === "8080")  return { base: "http://192.168.0.210:30081", prefix: "" };
+  return { base: "http://192.168.0.210:30082", prefix: "" };
+}
+
+const { base: API_BASE, prefix: API_PREFIX } = resolveApiBase();
 const access=JSON.parse(localStorage.getItem('botc-access')||'null');
 var group_id = "";
 if(access) document.getElementById('roleInfo').textContent=`${access.role}${access.group?' · '+access.group:''}`;

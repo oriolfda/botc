@@ -13,6 +13,7 @@ button{background:#2e8b57;color:#fff;border:none;padding:10px;border-radius:6px;
 .success{color:#4caf50;margin-top:8px;text-align:center}
 .error{color:#ff6b6b;margin-top:8px;text-align:center}
 </style>
+<script src="env.js"></script>
 </head>
 <body>
 <h2>Crear / Editar Event</h2>
@@ -38,10 +39,48 @@ button{background:#2e8b57;color:#fff;border:none;padding:10px;border-radius:6px;
 <div id="msg"></div>
 
 <script>
-const isInternalIP = window.location.hostname.startsWith("192.168.") || window.location.hostname === "localhost";
-const API_BASE = isInternalIP ? "http://192.168.0.210:30081" : window.location.origin;
-const API_PREFIX = isInternalIP ? "" : "/api";
+const BOTC_CONFIG = window.BOTC_CONFIG || {};
+const urlEnv = new URLSearchParams(window.location.search).get("env");
+const ENV = (urlEnv || BOTC_CONFIG.ENV || "AUTO").toUpperCase();
+const isInternal = location.hostname.startsWith("192.168.") || location.hostname === "localhost";
 
+function resolveApiBase(){
+  if (BOTC_CONFIG.API_BASE) {
+    return { base: BOTC_CONFIG.API_BASE, prefix: BOTC_CONFIG.API_PREFIX ?? "" };
+  }
+  if (!isInternal) return { base: window.location.origin, prefix: "/api" };
+  if (ENV === "PROD") return { base: "http://192.168.0.210:30081", prefix: "" };
+  if (ENV === "TEST") return { base: "http://192.168.0.210:30082", prefix: "" };
+  if (location.port === "30084") return { base: "http://192.168.0.210:30082", prefix: "" };
+  if (location.port === "8080")  return { base: "http://192.168.0.210:30081", prefix: "" };
+  return { base: "http://192.168.0.210:30082", prefix: "" };
+}
+
+const { base: API_BASE, prefix: API_PREFIX } = resolveApiBase();
+
+const BOTC_CONFIG = window.BOTC_CONFIG || {};
+const urlEnv = new URLSearchParams(window.location.search).get("env");
+const ENV = (urlEnv || BOTC_CONFIG.ENV || "AUTO").toUpperCase();
+const isInternal = location.hostname.startsWith("192.168.") || location.hostname === "localhost";
+
+function resolveApiBase(){
+  if (BOTC_CONFIG.API_BASE) {
+    return { base: BOTC_CONFIG.API_BASE, prefix: BOTC_CONFIG.API_PREFIX ?? "" };
+  }
+  if (!isInternal) return { base: window.location.origin, prefix: "/api" };
+
+  if (ENV === "PROD") return { base: "http://192.168.0.210:30081", prefix: "" };
+  if (ENV === "TEST") return { base: "http://192.168.0.210:30082", prefix: "" };
+
+  // AUTO mode by frontend port
+  if (location.port === "30084") return { base: "http://192.168.0.210:30082", prefix: "" }; // test frontend
+  if (location.port === "8080")  return { base: "http://192.168.0.210:30081", prefix: "" }; // prod-like web
+
+  // safe default
+  return { base: "http://192.168.0.210:30082", prefix: "" };
+}
+
+const { base: API_BASE, prefix: API_PREFIX } = resolveApiBase();
 const params = new URLSearchParams(window.location.search);
 const eventId = params.get("event_id");
 

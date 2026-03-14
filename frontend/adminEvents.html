@@ -42,6 +42,7 @@ iframe{width:100%;height:100%;border:none;background:#1a1a1a}
 .menu-overlay.menu-obert{display:block}
 }
 </style>
+<script src="env.js"></script>
 </head>
 <body>
 <!-- LOGIN -->
@@ -76,9 +77,30 @@ iframe{width:100%;height:100%;border:none;background:#1a1a1a}
 </div>
 
 <script>
-const isInternal = location.hostname.startsWith("192.168.") || location.hostname==="localhost";
-const API_BASE = isInternal ? "http://192.168.0.210:30081" : window.location.origin;
-const API_PREFIX = isInternal ? "" : "/api";
+const BOTC_CONFIG = window.BOTC_CONFIG || {};
+const urlEnv = new URLSearchParams(window.location.search).get("env");
+const ENV = (urlEnv || BOTC_CONFIG.ENV || "AUTO").toUpperCase();
+const isInternal = location.hostname.startsWith("192.168.") || location.hostname === "localhost";
+
+function resolveApiBase(){
+  if (BOTC_CONFIG.API_BASE) {
+    return { base: BOTC_CONFIG.API_BASE, prefix: BOTC_CONFIG.API_PREFIX ?? "" };
+  }
+  if (!isInternal) return { base: window.location.origin, prefix: "/api" };
+
+  if (ENV === "PROD") return { base: "http://192.168.0.210:30081", prefix: "" };
+  if (ENV === "TEST") return { base: "http://192.168.0.210:30082", prefix: "" };
+
+  // AUTO mode by frontend port
+  if (location.port === "30084") return { base: "http://192.168.0.210:30082", prefix: "" }; // test frontend
+  if (location.port === "8080")  return { base: "http://192.168.0.210:30081", prefix: "" }; // prod-like web
+
+  // safe default
+  return { base: "http://192.168.0.210:30082", prefix: "" };
+}
+
+const { base: API_BASE, prefix: API_PREFIX } = resolveApiBase();
+
 
 const loginContainer=document.getElementById("loginContainer");
 const adminContainer=document.getElementById("adminContainer");
@@ -87,10 +109,10 @@ const loginTitle=document.getElementById("loginTitle");
 const msg=document.getElementById("loginMessage");
 
 async function checkHasPassword(){
-  const res = await fetch(`${API_BASE}${API_PREFIX}/access/has_password`);
+    const res = await fetch(`${API_BASE}${API_PREFIX}/access/has_password`);
   if(!res.ok){msg.textContent='Error connexió';return;}
   const data=await res.json();
-  if(data.has_password){loginTitle.textContent="Validació d'Administrador";loginBtn.textContent="Entrar";loginBtn.onclick=validateAdmin;}
+    if(data.has_password){loginTitle.textContent="Validació d'Administrador";loginBtn.textContent="Entrar";loginBtn.onclick=validateAdmin;}
   else{loginTitle.textContent="Crea la contrasenya d'Administrador";loginBtn.textContent="Desar";loginBtn.onclick=setAdminPassword;}
 }
 

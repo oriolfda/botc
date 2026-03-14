@@ -16,6 +16,7 @@ button.add{background:#2e8b57;color:#fff}
 .deleteBtn{background:#dc3545;display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:6px;border:none;cursor:pointer}
 .deleteBtn svg{width:16px;height:16px;fill:white}
 </style>
+<script src="env.js"></script>
 </head>
 <body>
 <h2>Gestió de Grups</h2>
@@ -28,9 +29,24 @@ button.add{background:#2e8b57;color:#fff}
 <div class="list" id="list"></div>
 
 <script>
-const isInternal = location.hostname.startsWith("192.168.") || location.hostname==="localhost";
-const API_BASE = isInternal ? "http://192.168.0.210:30081" : "";
-const API_PREFIX = isInternal ? "" : "/api";
+const BOTC_CONFIG = window.BOTC_CONFIG || {};
+const urlEnv = new URLSearchParams(window.location.search).get("env");
+const ENV = (urlEnv || BOTC_CONFIG.ENV || "AUTO").toUpperCase();
+const isInternal = location.hostname.startsWith("192.168.") || location.hostname === "localhost";
+
+function resolveApiBase(){
+  if (BOTC_CONFIG.API_BASE) {
+    return { base: BOTC_CONFIG.API_BASE, prefix: BOTC_CONFIG.API_PREFIX ?? "" };
+  }
+  if (!isInternal) return { base: window.location.origin, prefix: "/api" };
+  if (ENV === "PROD") return { base: "http://192.168.0.210:30081", prefix: "" };
+  if (ENV === "TEST") return { base: "http://192.168.0.210:30082", prefix: "" };
+  if (location.port === "30084") return { base: "http://192.168.0.210:30082", prefix: "" };
+  if (location.port === "8080")  return { base: "http://192.168.0.210:30081", prefix: "" };
+  return { base: "http://192.168.0.210:30082", prefix: "" };
+}
+
+const { base: API_BASE, prefix: API_PREFIX } = resolveApiBase();
 
 function deleteSvg(){return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path fill="white" d="M432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.9a24 24 0 0 0-21.5 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0-16-16zM53.2 467a48 48 0 0 0 47.9 45h246.6a48 48 0 0 0 47.9-45L416 128H32l21.2 339z"/></svg>`;}
 
