@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Administració d'Events</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;background:#1a1a1a;color:#e0e0e0;height:100vh;overflow:hidden}
+
+/* LOGIN */
+#loginContainer{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;text-align:center;gap:1rem}
+#loginContainer input{padding:10px;border-radius:6px;border:1px solid #444;background:#2d2d2d;color:#f0f0f0;width:250px}
+#loginContainer button{padding:10px 20px;background-color:#2e8b57;color:white;border:none;border-radius:5px;cursor:pointer;font-size:1rem}
+#loginContainer button:hover{background-color:#256c47}
+#loginMessage{color:#f0f0f0;font-size:0.9rem}
+
+/* LAYOUT PRINCIPAL */
+.admin-container{display:none;height:100vh;width:100%}
+.menu-lateral{width:280px;background:#2d2d2d;border-right:1px solid #444;display:flex;flex-direction:column;transition:transform .3s ease;z-index:1000}
+.menu-header{padding:2rem 1.5rem;border-bottom:1px solid #444;text-align:center}
+.menu-header h2{color:#fff;font-size:1.4rem;background:linear-gradient(135deg,#2e8b57,#3a86ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.menu-lateral ul{list-style:none;flex:1;padding:1rem 0}
+.menu-lateral a{display:flex;align-items:center;gap:1rem;padding:1.2rem 1.5rem;color:#e0e0e0;text-decoration:none;transition:all .3s ease;border-left:3px solid transparent}
+.menu-lateral a:hover{background:#3d3d3d;border-left-color:#2e8b57;color:#fff}
+.menu-lateral a.active{background:#2e8b57;border-left-color:#256c47;color:#fff}
+.menu-icon{font-size:1.2rem;width:20px;text-align:center}
+
+/* CONTINGUT */
+.contingut{flex:1;display:flex;flex-direction:column;background:#1a1a1a}
+.titol-contingut{padding:1.5rem 2rem;background:#2d2d2d;border-bottom:1px solid #444;color:#fff;font-size:1.3rem}
+.frame-container{flex:1;position:relative}
+iframe{width:100%;height:100%;border:none;background:#1a1a1a}
+
+/* BOTÓ MENÚ MÒBIL */
+.menu-toggle{display:none;position:fixed;top:1rem;left:1rem;z-index:1001;background:#2e8b57;border:none;color:white;width:50px;height:50px;border-radius:50%;cursor:pointer;font-size:1.5rem;box-shadow:0 4px 12px rgba(0,0,0,0.3)}
+.menu-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:999}
+@media(max-width:768px){
+.menu-lateral{position:fixed;top:0;left:0;height:100vh;transform:translateX(-100%)}
+.menu-lateral.menu-obert{transform:translateX(0)}
+.menu-toggle{display:block}
+.menu-overlay.menu-obert{display:block}
+}
+</style>
+<script src="env.js"></script>
+</head>
+<body>
+<!-- LOGIN -->
+<div id="loginContainer">
+  <h2 id="loginTitle">Validació d'Administrador</h2>
+  <input type="password" id="adminPassword" placeholder="Introdueix contrasenya">
+  <button id="loginBtn">Entrar</button>
+  <p id="loginMessage"></p>
+</div>
+
+<!-- MENU -->
+<button class="menu-toggle" id="menuToggle">☰</button>
+<div class="menu-overlay" id="menuOverlay"></div>
+
+<div class="admin-container" id="adminContainer">
+  <nav class="menu-lateral" id="menuLateral">
+    <div class="menu-header"><h2>🏰 Administració</h2></div>
+    <ul>
+      <li><a href="#" class="active" onclick="carregarPagina('createGroup.html','Gestió de Grups',this)">
+        <span class="menu-icon">👥</span><span>Gestió de Grups</span></a></li>
+      <li><a href="#" onclick="carregarPagina('createEvent.html','Crear Event',this)">
+        <span class="menu-icon">➕</span><span>Crear Event</span></a></li>
+      <li><a href="#" onclick="carregarPagina('events.html','Llista d’Events',this)">
+        <span class="menu-icon">📅</span><span>Llista d’Events</span></a></li>
+    </ul>
+  </nav>
+
+  <main class="contingut">
+    <h1 class="titol-contingut" id="titolContingut">Gestió de Grups</h1>
+    <div class="frame-container"><iframe id="frameContingut" src="createGroup.html"></iframe></div>
+  </main>
+</div>
+
+<script>
+const BOTC_CONFIG = window.BOTC_CONFIG || {};
+const urlEnv = new URLSearchParams(window.location.search).get("env");
+const ENV = (urlEnv || BOTC_CONFIG.ENV || "AUTO").toUpperCase();
+const isInternal = location.hostname.startsWith("192.168.") || location.hostname === "localhost";
+
+function resolveApiBase(){
+  if (BOTC_CONFIG.API_BASE) {
+    return { base: BOTC_CONFIG.API_BASE, prefix: BOTC_CONFIG.API_PREFIX ?? "" };
+  }
+  if (!isInternal) return { base: window.location.origin, prefix: "/api" };
+
+  if (ENV === "PROD") return { base: "http://192.168.0.210:30081", prefix: "" };
+  if (ENV === "TEST") return { base: "http://192.168.0.210:30082", prefix: "" };
+
+  // AUTO mode by frontend port
+  if (location.port === "30084") return { base: "http://192.168.0.210:30082", prefix: "" }; // test frontend
+  if (location.port === "8080")  return { base: "http://192.168.0.210:30081", prefix: "" }; // prod-like web
+
+  // safe default
+  return { base: "http://192.168.0.210:30082", prefix: "" };
+}
+
+const { base: API_BASE, prefix: API_PREFIX } = resolveApiBase();
+
+
+const loginContainer=document.getElementById("loginContainer");
+const adminContainer=document.getElementById("adminContainer");
+const loginBtn=document.getElementById("loginBtn");
+const loginTitle=document.getElementById("loginTitle");
+const msg=document.getElementById("loginMessage");
+
+async function checkHasPassword(){
+    const res = await fetch(`${API_BASE}${API_PREFIX}/access/has_password`);
+  if(!res.ok){msg.textContent='Error connexió';return;}
+  const data=await res.json();
+    if(data.has_password){loginTitle.textContent="Validació d'Administrador";loginBtn.textContent="Entrar";loginBtn.onclick=validateAdmin;}
+  else{loginTitle.textContent="Crea la contrasenya d'Administrador";loginBtn.textContent="Desar";loginBtn.onclick=setAdminPassword;}
+}
+
+async function setAdminPassword(){
+  const password=document.getElementById("adminPassword").value.trim();
+  if(!password) return msg.textContent="Introdueix una contrasenya.";
+  const res=await fetch(`${API_BASE}${API_PREFIX}/access/set_password`,{
+    method:"POST",
+    body:new URLSearchParams({password})
+  });
+  if(res.ok){msg.style.color="#4caf50";msg.textContent="Contrasenya creada! Ara pots entrar.";setTimeout(checkHasPassword,1000);}
+  else msg.textContent="Error creant la contrasenya.";
+}
+
+async function validateAdmin(){
+  const password=document.getElementById("adminPassword").value.trim();
+  const res=await fetch(`${API_BASE}${API_PREFIX}/access/validate`,{
+    method:"POST",
+    body:new URLSearchParams({code:password})
+  });
+  if(res.ok){
+    const data=await res.json();
+    localStorage.setItem("botc-access",JSON.stringify(data));
+    loginContainer.style.display="none";
+    adminContainer.style.display="flex";
+  }else msg.textContent="Contrasenya incorrecta.";
+}
+
+// MENU
+const menuToggle=document.getElementById('menuToggle');
+const menuLateral=document.getElementById('menuLateral');
+const menuOverlay=document.getElementById('menuOverlay');
+function toggleMenu(){menuLateral.classList.toggle('menu-obert');menuOverlay.classList.toggle('menu-obert');}
+menuToggle.onclick=toggleMenu;menuOverlay.onclick=toggleMenu;
+
+function carregarPagina(url,titol,element){
+  document.getElementById("titolContingut").textContent=titol;
+  document.getElementById("frameContingut").src=url;
+  document.querySelectorAll(".menu-lateral a").forEach(a=>a.classList.remove("active"));
+  if(element)element.classList.add("active");
+  if(window.innerWidth<=768)toggleMenu();
+}
+
+checkHasPassword();
+</script>
+</body>
+</html>

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Events</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial;background:#1a1a1a;color:#f0f0f0;padding:12px}
+.header{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; flex-wrap:wrap; gap:6px; }
+.header-left{display:flex; flex-direction:column; justify-content:center; }
+.header-center{display:flex; flex-direction:column; align-items:center;font-size:0.6rem;}
+.header-right{display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+#logout{background:#dc3545; border:none; color:#fff; padding:8px 10px; border-radius:6px; cursor:pointer; }
+.container{display:flex;flex-direction:column;gap:12px;align-items:center}
+.card2{background:#2d2d2d;padding:6px;border-radius:10px;max-width:700px;width:390px;position:relative}
+.card2 img{width:100%;aspect-ratio: 3 / 4;max-height: 140svh;object-fit:cover;border-radius:8px}
+.card3 {display:flex;flex-direction:column;max-height:100svh;overflow:hidden;}
+.card2 img {flex:1;width:100%;object-fit:cover;border-radius:8px;}
+.count2{position:absolute;top:12px;right:12px;background:#2e8b57;color:#fff;border-radius:50%;width:80px;height:80px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700}
+.count2 .num{font-size:1.8rem;line-height:1}
+.count2 small{font-size:0.8rem;margin-top:4px;color:#dcdcdc}
+
+.card {position:relative;max-height:100svh;display:flex;flex-direction:column;}
+.card img {width:100%;height:auto;max-height:100svh;object-fit:cover;border-radius:8px;}
+.count {position:absolute;top:12px;right:12px;background:#2e8b57;color:#fff;border-radius:50%;width:80px;height:80px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;z-index:1;}
+.count .num {font-size:1.8rem;line-height:1;}
+.count small {font-size:0.8rem;margin-top:4px;color:#dcdcdc;}
+
+
+
+
+.actions{display:flex;gap:8px;justify-content:center;margin-top:12px}
+button.btn{padding:9px 12px;border-radius:6px;color:#fff;border:none;cursor:pointer}
+button.open{background:#2e8b57}
+button.edit{background:#3a86ff}
+button.deleteBtn{background:#dc3545;display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:6px}
+button.deleteBtn svg{width:16px;height:16px;fill:white}
+.loginbox{display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:40px}
+.loginbox input{padding:10px;border-radius:6px;border:1px solid #444;background:#222;color:#fff;width:260px}
+.roleinfo{font-size:0.9rem;color:#999;text-align:middle;justify-content:center;margin-bottom:6px}
+</style>
+<script src="env.js"></script>
+</head>
+<body>
+<div class="header">
+  <div class="header-left">
+    <h2 style="color:#2e8b57">Events</h2>
+  </div>
+
+  <div class="header-center">
+    <div id="roleInfo" class="roleinfo"></div>
+    <div id="showInactive2">
+      <label style="display:flex;align-items:center;gap:4px">
+        <input type="checkbox" id="showInactive">
+        <span style="font-size:0.9rem">Inactius</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="header-right">
+    <button id="logout">Sortir</button>
+  </div>
+</div>
+
+
+<div id="login" class="loginbox" style="display:none">
+  <input id="code" placeholder="Codi d'accés">
+  <button id="enter" class="btn open">Entrar</button>
+  <div id="loginMsg" style="height:18px;color:#ff6b6b"></div>
+</div>
+<div id="list" class="container"></div>
+
+<script>
+const BOTC_CONFIG = window.BOTC_CONFIG || {};
+const urlEnv = new URLSearchParams(window.location.search).get("env");
+const ENV = (urlEnv || BOTC_CONFIG.ENV || "AUTO").toUpperCase();
+const isInternal = location.hostname.startsWith("192.168.") || location.hostname === "localhost";
+
+function resolveApiBase(){
+  if (BOTC_CONFIG.API_BASE) {
+    return { base: BOTC_CONFIG.API_BASE, prefix: BOTC_CONFIG.API_PREFIX ?? "" };
+  }
+  if (!isInternal) return { base: window.location.origin, prefix: "/api" };
+  if (ENV === "PROD") return { base: "http://192.168.0.210:30081", prefix: "" };
+  if (ENV === "TEST") return { base: "http://192.168.0.210:30082", prefix: "" };
+  if (location.port === "30084") return { base: "http://192.168.0.210:30082", prefix: "" };
+  if (location.port === "8080")  return { base: "http://192.168.0.210:30081", prefix: "" };
+  return { base: "http://192.168.0.210:30082", prefix: "" };
+}
+
+const { base: API_BASE, prefix: API_PREFIX } = resolveApiBase();
+
+function deleteSvg(){return `<svg viewBox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><path fill="white" d="M432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.9a24 24 0 0 0-21.5 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0-16-16zM53.2 467a48 48 0 0 0 47.9 45h246.6a48 48 0 0 0 47.9-45L416 128H32l21.2 339z"/></svg>`;}
+
+document.getElementById('logout').onclick=()=>{localStorage.removeItem('botc-access');showLogin();};
+document.getElementById('enter').onclick=validateAccess;
+
+async function validateAccess(){
+  const code=document.getElementById('code').value.trim();if(!code)return;
+  try{
+    const fd=new FormData();fd.append('code',code);
+    const res=await fetch(`${API_BASE}${API_PREFIX}/access/validate`,{method:'POST',body:fd});
+    if(!res.ok)return document.getElementById('loginMsg').textContent='Codi incorrecte';
+    const j=await res.json();localStorage.setItem('botc-access',JSON.stringify(j));loadEvents();showApp();
+  }catch(e){document.getElementById('loginMsg').textContent='Error';}
+}
+
+function showLogin(){document.getElementById('login').style.display='flex';document.getElementById('list').innerHTML='';document.getElementById('showInactive2').style.display='none';}
+function showApp(){document.getElementById('login').style.display='none';const a=JSON.parse(localStorage.getItem('botc-access')||'null');if(a&&(a.role==='admin'||a.role==='superadmin'))document.getElementById('showInactive2').style.display='inline-flex';document.getElementById('roleInfo').textContent=`${a.role}${a.group?' · '+a.group:''}`;if(a&&(a.role==='user')||!a)document.getElementById('showInactive2').style.display='none';}
+
+document.getElementById('showInactive').onchange=()=>loadEvents();
+
+async function loadEvents(){
+  const res=await fetch(`${API_BASE}${API_PREFIX}/events`);
+  const events=await res.json();const acc=JSON.parse(localStorage.getItem('botc-access')||'null');
+  render(events,acc);
+}
+
+function render(events,access){
+  const list=document.getElementById('list');list.innerHTML='';
+  const showInactive=document.getElementById('showInactive').checked;
+  const visible=events.filter(ev=>{
+    console.log("access.event_id: "+access.event_id+" ev.id: "+ev.id);
+    console.log(access.event_id&&ev.id!=access.event_id); 
+    if(!showInactive&&ev.status==='inactive')return false;
+    if(access.event_id&&ev.id!==access.event_id)return false;
+    if(access.role==='user')return !ev.group_id||ev.group_id===access.group_id;
+    return true;
+  });
+  visible.forEach(ev=>{
+    const card=document.createElement('div');card.className='card';
+    const img=ev.image_url?`<img src="${(isInternal?API_BASE:'')+ev.image_url}" alt="">`:'';
+    const parts=ev.participant_count||0;const min=ev.min_participants||0;const max=ev.max_participants||0;
+    card.innerHTML=`${img}<div style="text-align:center;margin-top:6px"><h3>${ev.name}</h3><p>${ev.date||''}</p><p>${ev.location?ev.location:''}</p></div><div class="count"><span class="num">${parts}</span><small>${min}/${max}</small></div>`;
+    const actions=document.createElement('div');actions.className='actions';
+
+    const canEdit=(access?.role==='superadmin')||(access?.role==='admin' && access?.group_id===ev.group_id);
+    actions.innerHTML=`<button class="btn open" onclick="openParticipants(${ev.id})">Obrir</button>`;
+    if(canEdit){actions.innerHTML+=`<button class="btn edit" onclick="editEvent(${ev.id})">Editar</button><button class="btn deleteBtn" onclick="deleteEvent(${ev.id})">${deleteSvg()}</button>`;}
+    card.appendChild(actions);list.appendChild(card);
+  });
+}
+
+function openParticipants(id){location.href=`eventParticipants.html?event_id=${id}`;}
+function editEvent(id){location.href=`createEvent.html?event_id=${id}`;}
+async function deleteEvent(id){if(confirm('Eliminar event?')){await fetch(`${API_BASE}${API_PREFIX}/events/${id}`,{method:'DELETE'});loadEvents();}}
+
+const saved=localStorage.getItem('botc-access');
+if(saved){showApp();loadEvents();}else showLogin();
+</script>
+</body>
+</html>
