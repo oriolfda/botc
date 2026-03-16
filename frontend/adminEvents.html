@@ -14,6 +14,8 @@ body{font-family:Arial,sans-serif;background:#1a1a1a;color:#e0e0e0;height:100vh;
 #loginContainer button{padding:10px 20px;background-color:#2e8b57;color:white;border:none;border-radius:5px;cursor:pointer;font-size:1rem}
 #loginContainer button:hover{background-color:#256c47}
 #loginMessage{color:#f0f0f0;font-size:0.9rem}
+#logoutBtn{display:none;position:fixed;top:1rem;right:1rem;z-index:1002;background:#dc3545;color:#fff;border:none;border-radius:6px;padding:8px 12px;cursor:pointer}
+#logoutBtn:hover{background:#b52a37}
 
 /* LAYOUT PRINCIPAL */
 .admin-container{display:none;height:100vh;width:100%}
@@ -40,6 +42,7 @@ iframe{width:100%;height:100%;border:none;background:#1a1a1a}
 .menu-lateral.menu-obert{transform:translateX(0)}
 .menu-toggle{display:block}
 .menu-overlay.menu-obert{display:block}
+.titol-contingut{padding-left:5rem}
 }
 </style>
 <script src="env.js"></script>
@@ -54,6 +57,7 @@ iframe{width:100%;height:100%;border:none;background:#1a1a1a}
 </div>
 
 <!-- MENU -->
+<button id="logoutBtn">Sortir</button>
 <button class="menu-toggle" id="menuToggle">☰</button>
 <div class="menu-overlay" id="menuOverlay"></div>
 
@@ -72,7 +76,7 @@ iframe{width:100%;height:100%;border:none;background:#1a1a1a}
 
   <main class="contingut">
     <h1 class="titol-contingut" id="titolContingut">Gestió de Grups</h1>
-    <div class="frame-container"><iframe id="frameContingut" src="createGroup.html"></iframe></div>
+    <div class="frame-container"><iframe id="frameContingut" src=""></iframe></div>
   </main>
 </div>
 
@@ -96,7 +100,7 @@ function resolveApiBase(){
   if (location.port === "8080")  return { base: "http://192.168.0.210:30081", prefix: "" }; // prod-like web
 
   // safe default
-  return { base: "http://192.168.0.210:30082", prefix: "" };
+  return { base: "http://192.168.0.210:30081", prefix: "" };
 }
 
 const { base: API_BASE, prefix: API_PREFIX } = resolveApiBase();
@@ -107,6 +111,40 @@ const adminContainer=document.getElementById("adminContainer");
 const loginBtn=document.getElementById("loginBtn");
 const loginTitle=document.getElementById("loginTitle");
 const msg=document.getElementById("loginMessage");
+const passwordInput=document.getElementById("adminPassword");
+const logoutBtn=document.getElementById("logoutBtn");
+
+const ACCESS_KEYS = ["botc-access"];
+
+function readStoredAccess(){
+  for (const key of ACCESS_KEYS){
+    const raw = localStorage.getItem(key);
+    if(!raw) continue;
+    try {
+      const parsed = JSON.parse(raw);
+      if(parsed && (parsed.access === "superadmin" || parsed.role === "superadmin" || parsed.level === "superadmin")) {
+        return parsed;
+      }
+    } catch(_) {}
+  }
+  return null;
+}
+
+function showAdminUI(){
+  loginContainer.style.display="none";
+  adminContainer.style.display="flex";
+  logoutBtn.style.display="inline-block";
+  const frame = document.getElementById("frameContingut");
+  if(!frame.src || frame.getAttribute('src') === ""){
+    carregarPagina('createGroup.html','Gestió de Grups', document.querySelector('.menu-lateral a.active'));
+  }
+}
+
+function showLoginUI(){
+  adminContainer.style.display="none";
+  loginContainer.style.display="flex";
+  logoutBtn.style.display="none";
+}
 
 async function checkHasPassword(){
     const res = await fetch(`${API_BASE}${API_PREFIX}/access/has_password`);
@@ -136,8 +174,7 @@ async function validateAdmin(){
   if(res.ok){
     const data=await res.json();
     localStorage.setItem("botc-access",JSON.stringify(data));
-    loginContainer.style.display="none";
-    adminContainer.style.display="flex";
+    showAdminUI();
   }else msg.textContent="Contrasenya incorrecta.";
 }
 
@@ -148,15 +185,54 @@ const menuOverlay=document.getElementById('menuOverlay');
 function toggleMenu(){menuLateral.classList.toggle('menu-obert');menuOverlay.classList.toggle('menu-obert');}
 menuToggle.onclick=toggleMenu;menuOverlay.onclick=toggleMenu;
 
+function withEnv(url){
+  const u = new URL(url, window.location.href);
+  if (!u.searchParams.get('env')) u.searchParams.set('env', ENV);
+  return u.pathname.split('/').pop() + u.search;
+}
+
 function carregarPagina(url,titol,element){
   document.getElementById("titolContingut").textContent=titol;
-  document.getElementById("frameContingut").src=url;
+  document.getElementById("frameContingut").src=withEnv(url);
   document.querySelectorAll(".menu-lateral a").forEach(a=>a.classList.remove("active"));
   if(element)element.classList.add("active");
   if(window.innerWidth<=768)toggleMenu();
 }
 
-checkHasPassword();
+async function initAuth(){
+  // Bloqueja UI per defecte per evitar estat enganxat (bfcache / navegació enrere)
+  showLoginUI();
+  const stored = readStoredAccess();
+  if(stored){
+    showAdminUI();
+    return;
+  }
+  await checkHasPassword();
+}
+
+logoutBtn.onclick = () => {
+  localStorage.removeItem('botc-access');
+  initAuth();
+};
+
+passwordInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    if (typeof loginBtn.onclick === 'function') loginBtn.onclick();
+  }
+});
+
+// Si una altra pàgina fa logout, aquesta també s'ha de bloquejar
+window.addEventListener('storage', (e) => {
+  if (e.key === 'botc-access') initAuth();
+});
+
+// Quan es recupera des de cache del navegador, revalida sessió
+window.addEventListener('pageshow', () => {
+  initAuth();
+});
+
+initAuth();
 </script>
 </body>
 </html>

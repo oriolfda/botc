@@ -6,17 +6,28 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Arial;background:#121212;color:#f0f0f0;padding:20px}
-h2{color:#2e8b57;margin-bottom:10px;text-align:center}
+.header{display:flex;justify-content:space-between;align-items:flex-end;max-width:500px;margin:0 auto 10px auto}
+.header-left{flex:1}
+.header-right{display:flex;justify-content:flex-end}
+h2{color:#2e8b57;margin:0;text-align:left}
 form{display:flex;flex-direction:column;gap:10px;max-width:500px;margin:auto}
 input,select,textarea{padding:10px;border-radius:6px;border:1px solid #444;background:#222;color:#fff;width:100%}
 button{background:#2e8b57;color:#fff;border:none;padding:10px;border-radius:6px;cursor:pointer}
+a.back{background:#2e8b57;color:#fff;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:0.8rem;text-decoration:none}
 .success{color:#4caf50;margin-top:8px;text-align:center}
 .error{color:#ff6b6b;margin-top:8px;text-align:center}
 </style>
 <script src="env.js"></script>
 </head>
 <body>
-<h2>Crear / Editar Event</h2>
+<div class="header">
+  <div class="header-left">
+    <h2>Crear / Editar Event</h2>
+  </div>
+  <div class="header-right">
+    <a class="back" id="backLink" href="events.html">Enrere</a>
+  </div>
+</div>
 
 <form id="eventForm" enctype="multipart/form-data">
   <input type="text" name="name" id="name" placeholder="Nom de l'event" required>
@@ -53,12 +64,13 @@ function resolveApiBase(){
   if (ENV === "TEST") return { base: "http://192.168.0.210:30082", prefix: "" };
   if (location.port === "30084") return { base: "http://192.168.0.210:30082", prefix: "" };
   if (location.port === "8080")  return { base: "http://192.168.0.210:30081", prefix: "" };
-  return { base: "http://192.168.0.210:30082", prefix: "" };
+  return { base: "http://192.168.0.210:30081", prefix: "" };
 }
 
 const { base: API_BASE, prefix: API_PREFIX } = resolveApiBase();
 const params = new URLSearchParams(window.location.search);
 const eventId = params.get("event_id");
+document.getElementById('backLink').href = `events.html?env=${encodeURIComponent(ENV)}`;
 
 async function loadGroups(){
   const sel=document.getElementById('groupSelect');

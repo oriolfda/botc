@@ -85,15 +85,22 @@ function resolveApiBase(){
   if (ENV === "TEST") return { base: "http://192.168.0.210:30082", prefix: "" };
   if (location.port === "30084") return { base: "http://192.168.0.210:30082", prefix: "" };
   if (location.port === "8080")  return { base: "http://192.168.0.210:30081", prefix: "" };
-  return { base: "http://192.168.0.210:30082", prefix: "" };
+  return { base: "http://192.168.0.210:30081", prefix: "" };
 }
 
 const { base: API_BASE, prefix: API_PREFIX } = resolveApiBase();
 
 function deleteSvg(){return `<svg viewBox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><path fill="white" d="M432 32H312l-9.4-18.7A24 24 0 0 0 281.1 0H166.9a24 24 0 0 0-21.5 13.3L136 32H16A16 16 0 0 0 0 48v32a16 16 0 0 0 16 16h416a16 16 0 0 0 16-16V48a16 16 0 0 0-16-16zM53.2 467a48 48 0 0 0 47.9 45h246.6a48 48 0 0 0 47.9-45L416 128H32l21.2 339z"/></svg>`;}
 
-document.getElementById('logout').onclick=()=>{localStorage.removeItem('botc-access');showLogin();};
+const logoutBtn = document.getElementById('logout');
+const isEmbedded = window.self !== window.top;
+if(isEmbedded){
+  logoutBtn.style.display='none';
+}
+
+logoutBtn.onclick=()=>{localStorage.removeItem('botc-access');showLogin();};
 document.getElementById('enter').onclick=validateAccess;
+document.getElementById('code').addEventListener('keydown',(e)=>{if(e.key==='Enter'){e.preventDefault();validateAccess();}});
 
 async function validateAccess(){
   const code=document.getElementById('code').value.trim();if(!code)return;
@@ -141,8 +148,8 @@ function render(events,access){
   });
 }
 
-function openParticipants(id){location.href=`eventParticipants.html?event_id=${id}`;}
-function editEvent(id){location.href=`createEvent.html?event_id=${id}`;}
+function openParticipants(id){location.href=`eventParticipants.html?event_id=${id}&env=${encodeURIComponent(ENV)}`;}
+function editEvent(id){location.href=`createEvent.html?event_id=${id}&env=${encodeURIComponent(ENV)}`;}
 async function deleteEvent(id){if(confirm('Eliminar event?')){await fetch(`${API_BASE}${API_PREFIX}/events/${id}`,{method:'DELETE'});loadEvents();}}
 
 const saved=localStorage.getItem('botc-access');

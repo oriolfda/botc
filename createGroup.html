@@ -43,7 +43,7 @@ function resolveApiBase(){
   if (ENV === "TEST") return { base: "http://192.168.0.210:30082", prefix: "" };
   if (location.port === "30084") return { base: "http://192.168.0.210:30082", prefix: "" };
   if (location.port === "8080")  return { base: "http://192.168.0.210:30081", prefix: "" };
-  return { base: "http://192.168.0.210:30082", prefix: "" };
+  return { base: "http://192.168.0.210:30081", prefix: "" };
 }
 
 const { base: API_BASE, prefix: API_PREFIX } = resolveApiBase();
