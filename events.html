@@ -33,6 +33,7 @@ body{font-family:Arial;background:#1a1a1a;color:#f0f0f0;padding:12px}
 button.btn{padding:9px 12px;border-radius:6px;color:#fff;border:none;cursor:pointer}
 button.open{background:#2e8b57}
 button.edit{background:#3a86ff}
+button.publish{background:#8e44ad}
 button.deleteBtn{background:#dc3545;display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:6px}
 button.deleteBtn svg{width:16px;height:16px;fill:white}
 .loginbox{display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:40px}
@@ -143,13 +144,14 @@ function render(events,access){
 
     const canEdit=(access?.role==='superadmin')||(access?.role==='admin' && access?.group_id===ev.group_id);
     actions.innerHTML=`<button class="btn open" onclick="openParticipants(${ev.id})">Obrir</button>`;
-    if(canEdit){actions.innerHTML+=`<button class="btn edit" onclick="editEvent(${ev.id})">Editar</button><button class="btn deleteBtn" onclick="deleteEvent(${ev.id})">${deleteSvg()}</button>`;}
+    if(canEdit){actions.innerHTML+=`<button class="btn edit" onclick="editEvent(${ev.id})">Editar</button><button class="btn publish" onclick="openPublication(${ev.id})">Publicar</button><button class="btn deleteBtn" onclick="deleteEvent(${ev.id})">${deleteSvg()}</button>`;}
     card.appendChild(actions);list.appendChild(card);
   });
 }
 
 function openParticipants(id){location.href=`eventParticipants.html?event_id=${id}&env=${encodeURIComponent(ENV)}`;}
 function editEvent(id){location.href=`createEvent.html?event_id=${id}&env=${encodeURIComponent(ENV)}`;}
+function openPublication(id){location.href=`eventPublication.html?event_id=${id}&env=${encodeURIComponent(ENV)}`;}
 async function deleteEvent(id){if(confirm('Eliminar event?')){await fetch(`${API_BASE}${API_PREFIX}/events/${id}`,{method:'DELETE'});loadEvents();}}
 
 const saved=localStorage.getItem('botc-access');

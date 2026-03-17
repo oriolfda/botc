@@ -1,9 +1,12 @@
 from fastapi import FastAPI, Form, HTTPException, UploadFile, File
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import sqlite3, os, shutil, uuid
 from pathlib import Path
+from datetime import datetime, timezone
+from email.utils import format_datetime
+from xml.sax.saxutils import escape
 
 app = FastAPI()
 
@@ -75,10 +78,28 @@ with db_conn() as conn:
         admin_password VARCHAR NOT NULL
     )
     """)
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS event_publications (
+        id INTEGER PRIMARY KEY,
+        event_id INTEGER NOT NULL,
+        title VARCHAR NOT NULL,
+        event_date VARCHAR,
+        location VARCHAR,
+        participant_count INTEGER DEFAULT 0,
+        status VARCHAR,
+        optional_text VARCHAR,
+        author_role VARCHAR,
+        created_at VARCHAR DEFAULT CURRENT_TIMESTAMP,
+        guid VARCHAR NOT NULL UNIQUE,
+        FOREIGN KEY(event_id) REFERENCES events(id) ON DELETE CASCADE
+    )
+    """)
     c.execute("CREATE INDEX IF NOT EXISTS idx_events_group_id ON events(group_id)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_participants_event_id ON participants(event_id)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_participants_group_id ON participants(group_id)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_events_codeEvt ON events(codeEvt)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_event_publications_event_id ON event_publications(event_id)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_event_publications_created_at ON event_publications(created_at)")
     conn.commit()
 
 # --- MODELS ---
@@ -338,6 +359,103 @@ async def set_admin_password(password: str = Form(...)):
         c.execute("INSERT INTO admin_config (admin_password) VALUES (?)", (password,))
         conn.commit()
     return {"status": "ok"}
+
+
+# --- PUBLICATIONS / RSS ---
+@app.post("/events/{event_id}/publish")
+async def publish_event(event_id: int, optional_text: str = Form(None), role: str = Form(None)):
+    if role not in {"admin", "superadmin"}:
+        raise HTTPException(status_code=403, detail="Only admin/superadmin can publish")
+
+    with db_conn() as conn:
+        c = conn.cursor()
+        c.execute("""
+            SELECT e.id, e.name, e.date, e.location, e.status,
+                   (SELECT COUNT(*) FROM participants p WHERE p.event_id = e.id) AS participant_count
+            FROM events e
+            WHERE e.id = ?
+        """, (event_id,))
+        row = c.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Event not found")
+
+        publication_id = uuid.uuid4().hex
+        guid = f"event-{event_id}-pub-{publication_id}"
+        c.execute("""
+            INSERT INTO event_publications (
+                event_id, title, event_date, location, participant_count, status,
+                optional_text, author_role, guid
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            row["id"], row["name"], row["date"], row["location"], row["participant_count"], row["status"],
+            optional_text, role, guid
+        ))
+        conn.commit()
+
+    return {"status": "published", "guid": guid}
+
+
+@app.get("/rss/events.xml")
+@app.get("/api/rss/events.xml")
+async def rss_events():
+    with db_conn() as conn:
+        c = conn.cursor()
+        c.execute("""
+            SELECT id, event_id, title, event_date, location, participant_count, status,
+                   optional_text, created_at, guid
+            FROM event_publications
+            ORDER BY datetime(created_at) DESC, id DESC
+            LIMIT 200
+        """)
+        rows = c.fetchall()
+
+    base_url = os.getenv("BOTC_PUBLIC_BASE_URL", "").rstrip("/")
+
+    items_xml = []
+    for row in rows:
+        dt = datetime.strptime(row["created_at"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+        pub_date = format_datetime(dt)
+
+        event_path = f"/eventParticipants.html?event_id={row['event_id']}"
+        link = f"{base_url}{event_path}" if base_url else event_path
+
+        status_label = row["status"] or "active"
+        lines = [
+            f"Títol: {row['title']}",
+            f"Data: {row['event_date'] or '-'}",
+            f"Lloc: {row['location'] or '-'}",
+            f"Participants: {row['participant_count'] or 0}",
+            f"Estat: {status_label}",
+        ]
+        if row["optional_text"]:
+            lines.append(f"Missatge: {row['optional_text']}")
+
+        title = f"[PUBLICACIÓ] {row['title']}"
+        description = "\n".join(lines)
+
+        items_xml.append(
+            "<item>"
+            f"<title>{escape(title)}</title>"
+            f"<description>{escape(description)}</description>"
+            f"<link>{escape(link)}</link>"
+            f"<guid isPermaLink=\"false\">{escape(row['guid'])}</guid>"
+            f"<pubDate>{escape(pub_date)}</pubDate>"
+            "</item>"
+        )
+
+    channel_link = f"{base_url}/rss/events.xml" if base_url else "/rss/events.xml"
+    xml = (
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+        "<rss version=\"2.0\"><channel>"
+        "<title>BOTC - Publicacions d'events</title>"
+        f"<link>{escape(channel_link)}</link>"
+        "<description>Publicacions manuals d'events BOTC</description>"
+        "<language>ca</language>"
+        + "".join(items_xml)
+        + "</channel></rss>"
+    )
+    return Response(content=xml, media_type="application/rss+xml; charset=utf-8")
+
 
 # --- IMAGES ---
 @app.get("/images/{filename}")
