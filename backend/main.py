@@ -489,6 +489,38 @@ async def publish_event(event_id: int, optional_text: str = Form(None), role: st
     return {"status": "published", "guid": guid, "telegram": tg}
 
 
+@app.get("/publications")
+@app.get("/api/publications")
+async def list_publications(role: str):
+    if role not in {"admin", "superadmin"}:
+        raise HTTPException(status_code=403, detail="Only admin/superadmin can list publications")
+
+    with db_conn() as conn:
+        c = conn.cursor()
+        c.execute("""
+            SELECT id, event_id, title, event_date, location, participant_count, status,
+                   optional_text, created_at, guid, image_url
+            FROM event_publications
+            ORDER BY datetime(created_at) DESC, id DESC
+            LIMIT 500
+        """)
+        cols = [d[0] for d in c.description]
+        return [dict(zip(cols, r)) for r in c.fetchall()]
+
+
+@app.delete("/publications/{publication_id}")
+@app.delete("/api/publications/{publication_id}")
+async def delete_publication(publication_id: int, role: str):
+    if role not in {"admin", "superadmin"}:
+        raise HTTPException(status_code=403, detail="Only admin/superadmin can delete publications")
+
+    with db_conn() as conn:
+        c = conn.cursor()
+        c.execute("DELETE FROM event_publications WHERE id = ?", (publication_id,))
+        conn.commit()
+    return {"status": "deleted"}
+
+
 @app.get("/rss/events.xml")
 @app.get("/api/rss/events.xml")
 async def rss_events():
