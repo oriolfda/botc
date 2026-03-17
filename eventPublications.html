@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Publicacions</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial;background:#121212;color:#f0f0f0;padding:12px}
+.container{max-width:980px;margin:0 auto}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+h2{color:#8e44ad}
+button{border:none;border-radius:6px;padding:8px 12px;color:#fff;cursor:pointer}
+.btnRefresh{background:#3a86ff}
+.card{background:#2d2d2d;border-radius:10px;padding:12px;margin-bottom:10px;display:grid;grid-template-columns:120px 1fr auto;gap:10px;align-items:start}
+.card img{width:120px;height:120px;object-fit:cover;border-radius:8px;background:#222}
+.meta p{margin:2px 0;color:#d8d8d8}
+.meta .small{font-size:.85rem;color:#aaa}
+.delete{background:#dc3545}
+#msg{margin:8px 0;min-height:18px;color:#bbb}
+@media(max-width:760px){.card{grid-template-columns:1fr}.card img{width:100%;height:auto;max-height:200px}}
+</style>
+<script src="env.js"></script>
+</head>
+<body>
+<div class="container">
+  <div class="top">
+    <h2>📣 Publicacions emeses</h2>
+    <button class="btnRefresh" id="refreshBtn">Refrescar</button>
+  </div>
+  <div id="msg"></div>
+  <div id="list"></div>
+</div>
+
+<script>
+const BOTC_CONFIG = window.BOTC_CONFIG || {};
+const params = new URLSearchParams(window.location.search);
+const urlEnv = params.get("env");
+const ENV = (urlEnv || BOTC_CONFIG.ENV || "AUTO").toUpperCase();
+const isInternal = location.hostname.startsWith("192.168.") || location.hostname === "localhost";
+
+function resolveApiBase(){
+  if (BOTC_CONFIG.API_BASE) return { base: BOTC_CONFIG.API_BASE, prefix: BOTC_CONFIG.API_PREFIX ?? "" };
+  if (!isInternal) return { base: window.location.origin, prefix: "/api" };
+  if (ENV === "PROD") return { base: "http://192.168.0.210:30081", prefix: "" };
+  if (ENV === "TEST") return { base: "http://192.168.0.210:30082", prefix: "" };
+  if (location.port === "30084") return { base: "http://192.168.0.210:30082", prefix: "" };
+  if (location.port === "8080")  return { base: "http://192.168.0.210:30081", prefix: "" };
+  return { base: "http://192.168.0.210:30081", prefix: "" };
+}
+
+const { base: API_BASE, prefix: API_PREFIX } = resolveApiBase();
+const access = JSON.parse(localStorage.getItem('botc-access')||'null');
+
+function formatDate(v){
+  if(!v) return '-';
+  return v;
+}
+
+function imgUrl(path){
+  if(!path) return '';
+  if(path.startsWith('http://')||path.startsWith('https://')) return path;
+  return `${API_BASE}${path}`;
+}
+
+async function loadPublications(){
+  const msg=document.getElementById('msg');
+  const list=document.getElementById('list');
+  if(!access || !['admin','superadmin'].includes(access.role)){
+    msg.style.color='#ff8a8a';
+    msg.textContent='No tens permisos per veure publicacions.';
+    return;
+  }
+  msg.style.color='#bbb';
+  msg.textContent='Carregant...';
+  list.innerHTML='';
+
+  const res=await fetch(`${API_BASE}${API_PREFIX}/publications?role=${encodeURIComponent(access.role)}`);
+  if(!res.ok){
+    msg.style.color='#ff8a8a';
+    msg.textContent='Error carregant publicacions';
+    return;
+  }
+  const items=await res.json();
+  msg.textContent=`${items.length} publicacions`;
+
+  if(!items.length){
+    list.innerHTML='<div class="card"><div class="meta"><p>No hi ha publicacions.</p></div></div>';
+    return;
+  }
+
+  items.forEach(it=>{
+    const d=document.createElement('div');
+    d.className='card';
+    const eventLink=`events.html?event_id=${it.event_id}&env=${encodeURIComponent(ENV)}`;
+    d.innerHTML=`
+      <div>${it.image_url?`<img src="${imgUrl(it.image_url)}" alt="">`:''}</div>
+      <div class="meta">
+        <p><strong>${it.title}</strong></p>
+        <p>${formatDate(it.event_date)} · ${it.location||'-'}</p>
+        <p>Participants: ${it.participant_count||0} · Estat: ${it.status||'-'}</p>
+        ${it.optional_text?`<p>Missatge: ${it.optional_text}</p>`:''}
+        <p class="small">GUID: ${it.guid}</p>
+        <p class="small">Publicat: ${it.created_at}</p>
+        <p><a href="${eventLink}" style="color:#7db9ff">Obrir event</a></p>
+      </div>
+      <div>
+        <button class="delete" data-id="${it.id}">Esborrar</button>
+      </div>
+    `;
+    list.appendChild(d);
+  });
+
+  document.querySelectorAll('.delete').forEach(btn=>{
+    btn.addEventListener('click', async()=>{
+      const id=btn.getAttribute('data-id');
+      if(!confirm('Esborrar aquesta publicació?')) return;
+      const r=await fetch(`${API_BASE}${API_PREFIX}/publications/${id}?role=${encodeURIComponent(access.role)}`,{method:'DELETE'});
+      if(!r.ok){alert('No s\'ha pogut esborrar'); return;}
+      loadPublications();
+    });
+  });
+}
+
+document.getElementById('refreshBtn').addEventListener('click', loadPublications);
+loadPublications();
+</script>
+</body>
+</html>
