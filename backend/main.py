@@ -417,6 +417,7 @@ async def rss_events():
         rows = c.fetchall()
 
     base_url = os.getenv("BOTC_PUBLIC_BASE_URL", "").rstrip("/")
+    api_base_url = os.getenv("BOTC_PUBLIC_API_BASE_URL", "").rstrip("/")
 
     items_xml = []
     for row in rows:
@@ -427,8 +428,9 @@ async def rss_events():
         link = f"{base_url}{event_path}" if base_url else event_path
 
         image_url = row["image_url"] or ""
-        if image_url and base_url and image_url.startswith("/"):
-            image_url = f"{base_url}{image_url}"
+        image_base = api_base_url or base_url
+        if image_url and image_base and image_url.startswith("/"):
+            image_url = f"{image_base}{image_url}"
 
         status_label = row["status"] or "active"
         optional = f"<p><strong>Missatge:</strong> {escape(row['optional_text'])}</p>" if row["optional_text"] else ""
