@@ -116,13 +116,20 @@ const logoutBtn=document.getElementById("logoutBtn");
 
 const ACCESS_KEYS = ["botc-access"];
 
+function getEffectiveRole(parsed){
+  if(!parsed) return null;
+  // Prioritza `role` actual; `access`/`level` només com a fallback legacy
+  return parsed.role ?? parsed.access ?? parsed.level ?? null;
+}
+
 function readStoredAccess(){
   for (const key of ACCESS_KEYS){
     const raw = localStorage.getItem(key);
     if(!raw) continue;
     try {
       const parsed = JSON.parse(raw);
-      if(parsed && (parsed.access === "superadmin" || parsed.role === "superadmin" || parsed.level === "superadmin")) {
+      const role = getEffectiveRole(parsed);
+      if(role === "superadmin") {
         return parsed;
       }
     } catch(_) {}
