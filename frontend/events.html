@@ -73,7 +73,9 @@ button.deleteBtn svg{width:16px;height:16px;fill:white}
 
 <script>
 const BOTC_CONFIG = window.BOTC_CONFIG || {};
-const urlEnv = new URLSearchParams(window.location.search).get("env");
+const params = new URLSearchParams(window.location.search);
+const urlEnv = params.get("env");
+const forcedEventId = Number(params.get("event_id"));
 const ENV = (urlEnv || BOTC_CONFIG.ENV || "AUTO").toUpperCase();
 const isInternal = location.hostname.startsWith("192.168.") || location.hostname === "localhost";
 
@@ -132,6 +134,7 @@ function render(events,access){
     console.log(access.event_id&&ev.id!=access.event_id); 
     if(!showInactive&&ev.status==='inactive')return false;
     if(access.event_id&&ev.id!==access.event_id)return false;
+    if(!Number.isNaN(forcedEventId) && forcedEventId>0 && ev.id!==forcedEventId)return false;
     if(access.role==='user')return !ev.group_id||ev.group_id===access.group_id;
     return true;
   });

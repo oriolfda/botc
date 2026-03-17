@@ -100,6 +100,13 @@ with db_conn() as conn:
     c.execute("CREATE INDEX IF NOT EXISTS idx_events_codeEvt ON events(codeEvt)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_event_publications_event_id ON event_publications(event_id)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_event_publications_created_at ON event_publications(created_at)")
+
+    # Migracions suaus
+    c.execute("PRAGMA table_info(event_publications)")
+    publication_cols = {row[1] for row in c.fetchall()}
+    if "image_url" not in publication_cols:
+        c.execute("ALTER TABLE event_publications ADD COLUMN image_url VARCHAR")
+
     conn.commit()
 
 # --- MODELS ---
@@ -370,7 +377,7 @@ async def publish_event(event_id: int, optional_text: str = Form(None), role: st
     with db_conn() as conn:
         c = conn.cursor()
         c.execute("""
-            SELECT e.id, e.name, e.date, e.location, e.status,
+            SELECT e.id, e.name, e.date, e.location, e.status, e.image_url,
                    (SELECT COUNT(*) FROM participants p WHERE p.event_id = e.id) AS participant_count
             FROM events e
             WHERE e.id = ?
@@ -384,11 +391,11 @@ async def publish_event(event_id: int, optional_text: str = Form(None), role: st
         c.execute("""
             INSERT INTO event_publications (
                 event_id, title, event_date, location, participant_count, status,
-                optional_text, author_role, guid
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                optional_text, author_role, guid, image_url
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             row["id"], row["name"], row["date"], row["location"], row["participant_count"], row["status"],
-            optional_text, role, guid
+            optional_text, role, guid, row["image_url"]
         ))
         conn.commit()
 
@@ -402,7 +409,7 @@ async def rss_events():
         c = conn.cursor()
         c.execute("""
             SELECT id, event_id, title, event_date, location, participant_count, status,
-                   optional_text, created_at, guid
+                   optional_text, created_at, guid, image_url
             FROM event_publications
             ORDER BY datetime(created_at) DESC, id DESC
             LIMIT 200
@@ -416,27 +423,33 @@ async def rss_events():
         dt = datetime.strptime(row["created_at"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
         pub_date = format_datetime(dt)
 
-        event_path = f"/eventParticipants.html?event_id={row['event_id']}"
+        event_path = f"/events.html?event_id={row['event_id']}"
         link = f"{base_url}{event_path}" if base_url else event_path
 
+        image_url = row["image_url"] or ""
+        if image_url and base_url and image_url.startswith("/"):
+            image_url = f"{base_url}{image_url}"
+
         status_label = row["status"] or "active"
-        lines = [
-            f"Títol: {row['title']}",
-            f"Data: {row['event_date'] or '-'}",
-            f"Lloc: {row['location'] or '-'}",
-            f"Participants: {row['participant_count'] or 0}",
-            f"Estat: {status_label}",
-        ]
-        if row["optional_text"]:
-            lines.append(f"Missatge: {row['optional_text']}")
+        optional = f"<p><strong>Missatge:</strong> {escape(row['optional_text'])}</p>" if row["optional_text"] else ""
+        image_html = f'<p><img src="{escape(image_url)}" alt="{escape(row["title"])}" style="max-width:100%;border-radius:8px;"/></p>' if image_url else ""
+        description_html = (
+            f"{image_html}"
+            f"<p><strong>Títol:</strong> {escape(row['title'])}</p>"
+            f"<p><strong>Data:</strong> {escape(row['event_date'] or '-')}</p>"
+            f"<p><strong>Lloc:</strong> {escape(row['location'] or '-')}</p>"
+            f"<p><strong>Participants:</strong> {row['participant_count'] or 0}</p>"
+            f"<p><strong>Estat:</strong> {escape(status_label)}</p>"
+            f"{optional}"
+            f'<p><a href="{escape(link)}">Obrir event a la web</a></p>'
+        )
 
         title = f"[PUBLICACIÓ] {row['title']}"
-        description = "\n".join(lines)
 
         items_xml.append(
             "<item>"
             f"<title>{escape(title)}</title>"
-            f"<description>{escape(description)}</description>"
+            f"<description><![CDATA[{description_html}]]></description>"
             f"<link>{escape(link)}</link>"
             f"<guid isPermaLink=\"false\">{escape(row['guid'])}</guid>"
             f"<pubDate>{escape(pub_date)}</pubDate>"
