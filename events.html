@@ -33,6 +33,7 @@ body{font-family:Arial;background:#1a1a1a;color:#f0f0f0;padding:12px}
 button.btn{padding:9px 12px;border-radius:6px;color:#fff;border:none;cursor:pointer}
 button.open{background:#2e8b57}
 button.edit{background:#3a86ff}
+button.publish{background:#8e44ad}
 button.deleteBtn{background:#dc3545;display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:6px}
 button.deleteBtn svg{width:16px;height:16px;fill:white}
 .loginbox{display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:40px}
@@ -72,7 +73,9 @@ button.deleteBtn svg{width:16px;height:16px;fill:white}
 
 <script>
 const BOTC_CONFIG = window.BOTC_CONFIG || {};
-const urlEnv = new URLSearchParams(window.location.search).get("env");
+const params = new URLSearchParams(window.location.search);
+const urlEnv = params.get("env");
+const forcedEventId = Number(params.get("event_id"));
 const ENV = (urlEnv || BOTC_CONFIG.ENV || "AUTO").toUpperCase();
 const isInternal = location.hostname.startsWith("192.168.") || location.hostname === "localhost";
 
@@ -131,6 +134,7 @@ function render(events,access){
     console.log(access.event_id&&ev.id!=access.event_id); 
     if(!showInactive&&ev.status==='inactive')return false;
     if(access.event_id&&ev.id!==access.event_id)return false;
+    if(!Number.isNaN(forcedEventId) && forcedEventId>0 && ev.id!==forcedEventId)return false;
     if(access.role==='user')return !ev.group_id||ev.group_id===access.group_id;
     return true;
   });
@@ -143,13 +147,14 @@ function render(events,access){
 
     const canEdit=(access?.role==='superadmin')||(access?.role==='admin' && access?.group_id===ev.group_id);
     actions.innerHTML=`<button class="btn open" onclick="openParticipants(${ev.id})">Obrir</button>`;
-    if(canEdit){actions.innerHTML+=`<button class="btn edit" onclick="editEvent(${ev.id})">Editar</button><button class="btn deleteBtn" onclick="deleteEvent(${ev.id})">${deleteSvg()}</button>`;}
+    if(canEdit){actions.innerHTML+=`<button class="btn edit" onclick="editEvent(${ev.id})">Editar</button><button class="btn publish" onclick="openPublication(${ev.id})">Publicar</button><button class="btn deleteBtn" onclick="deleteEvent(${ev.id})">${deleteSvg()}</button>`;}
     card.appendChild(actions);list.appendChild(card);
   });
 }
 
 function openParticipants(id){location.href=`eventParticipants.html?event_id=${id}&env=${encodeURIComponent(ENV)}`;}
 function editEvent(id){location.href=`createEvent.html?event_id=${id}&env=${encodeURIComponent(ENV)}`;}
+function openPublication(id){location.href=`eventPublication.html?event_id=${id}&env=${encodeURIComponent(ENV)}`;}
 async function deleteEvent(id){if(confirm('Eliminar event?')){await fetch(`${API_BASE}${API_PREFIX}/events/${id}`,{method:'DELETE'});loadEvents();}}
 
 const saved=localStorage.getItem('botc-access');
