@@ -477,7 +477,7 @@ async def publish_event(event_id: int, optional_text: str = Form(None), role: st
     event_link = f"{web_base}/events.html?event_id={row['id']}" if web_base else f"/events.html?event_id={row['id']}"
 
     msg_lines = [
-        f"<b>🎭 [PUBLICACIÓ] {escape(row['name'])}</b>",
+        f"<b>🎭 {escape(row['name'])}</b>",
         f"📅 <b>Data:</b> {escape(row['date'] or '-')}",
         f"📍 <b>Lloc:</b> {escape(row['location'] or '-')}",
         f"👥 <b>Participants:</b> {row['participant_count'] or 0}",
@@ -573,7 +573,7 @@ async def rss_events():
             f'<p><a href="{escape(link)}">Obrir event a la web</a></p>'
         )
 
-        title = f"[PUBLICACIÓ] {row['title']}"
+        title = row["title"]
 
         items_xml.append(
             "<item>"
