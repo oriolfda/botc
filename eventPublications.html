@@ -51,6 +51,13 @@ function resolveApiBase(){
 const { base: API_BASE, prefix: API_PREFIX } = resolveApiBase();
 const access = JSON.parse(localStorage.getItem('botc-access')||'null');
 
+function humanStatus(v){
+  const s=(v||'').toLowerCase();
+  if(s==='active') return 'actiu';
+  if(s==='inactive') return 'inactiu';
+  return v||'-';
+}
+
 function formatDate(v){
   if(!v) return '-';
   return v;
@@ -97,7 +104,7 @@ async function loadPublications(){
       <div class="meta">
         <p><strong>${it.title}</strong></p>
         <p>${formatDate(it.event_date)} · ${it.location||'-'}</p>
-        <p>Participants: ${it.participant_count||0} · Estat: ${it.status||'-'}</p>
+        <p>Participants: ${it.participant_count||0} · Estat: ${humanStatus(it.status)}</p>
         ${it.optional_text?`<p>Missatge: ${it.optional_text}</p>`:''}
         <p class="small">GUID: ${it.guid}</p>
         <p class="small">Publicat: ${it.created_at}</p>

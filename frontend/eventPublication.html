@@ -61,6 +61,13 @@ function resolveApiBase(){
 }
 const { base: API_BASE, prefix: API_PREFIX } = resolveApiBase();
 
+function humanStatus(v){
+  const s=(v||'').toLowerCase();
+  if(s==='active') return 'actiu';
+  if(s==='inactive') return 'inactiu';
+  return v||'-';
+}
+
 function canPublishEvent(ev){
   if (!access) return false;
   if (access.role === 'superadmin') return true;
@@ -92,7 +99,7 @@ async function loadEvent(){
     <p><strong>Data:</strong> ${ev.date || '-'}</p>
     <p><strong>Lloc:</strong> ${ev.location || '-'}</p>
     <p><strong>Participants:</strong> ${ev.participant_count || 0}</p>
-    <p><strong>Estat:</strong> ${ev.status || 'active'}</p>
+    <p><strong>Estat:</strong> ${humanStatus(ev.status || 'active')}</p>
   `;
 
   if(!canPublishEvent(ev)){

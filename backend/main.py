@@ -39,6 +39,14 @@ def db_conn():
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
+def human_status(status: str | None) -> str:
+    s = (status or "").strip().lower()
+    if s == "active":
+        return "actiu"
+    if s == "inactive":
+        return "inactiu"
+    return status or "-"
+
 def telegram_send_publication(message: str, image_url: str | None = None):
     enabled = os.getenv("BOTC_TELEGRAM_ENABLED", "false").lower() in {"1", "true", "yes", "on"}
     if not enabled:
@@ -469,11 +477,11 @@ async def publish_event(event_id: int, optional_text: str = Form(None), role: st
     event_link = f"{web_base}/events.html?event_id={row['id']}" if web_base else f"/events.html?event_id={row['id']}"
 
     msg_lines = [
-        f"<b>🎭 [PUBLICACIÓ] {escape(row['name'])}</b>",
+        f"<b>🎭 {escape(row['name'])}</b>",
         f"📅 <b>Data:</b> {escape(row['date'] or '-')}",
         f"📍 <b>Lloc:</b> {escape(row['location'] or '-')}",
         f"👥 <b>Participants:</b> {row['participant_count'] or 0}",
-        f"🟢 <b>Estat:</b> {escape(row['status'] or 'active')}",
+        f"🟢 <b>Estat:</b> {escape(human_status(row['status'] or 'active'))}",
     ]
     if optional_text:
         msg_lines.append(f"💬 <b>Missatge:</b> {escape(optional_text)}")
@@ -551,7 +559,7 @@ async def rss_events():
         if image_url and image_base and image_url.startswith("/"):
             image_url = f"{image_base}{image_url}"
 
-        status_label = row["status"] or "active"
+        status_label = human_status(row["status"] or "active")
         optional = f"<p><strong>Missatge:</strong> {escape(row['optional_text'])}</p>" if row["optional_text"] else ""
         image_html = f'<p><img src="{escape(image_url)}" alt="{escape(row["title"])}" style="max-width:100%;border-radius:8px;"/></p>' if image_url else ""
         description_html = (
@@ -565,7 +573,7 @@ async def rss_events():
             f'<p><a href="{escape(link)}">Obrir event a la web</a></p>'
         )
 
-        title = f"[PUBLICACIÓ] {row['title']}"
+        title = row["title"]
 
         items_xml.append(
             "<item>"
