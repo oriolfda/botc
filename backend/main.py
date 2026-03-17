@@ -2,11 +2,12 @@ from fastapi import FastAPI, Form, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import sqlite3, os, shutil, uuid
+import sqlite3, os, shutil, uuid, json
 from pathlib import Path
 from datetime import datetime, timezone
 from email.utils import format_datetime
 from xml.sax.saxutils import escape
+from urllib.request import Request, urlopen
 
 app = FastAPI()
 
@@ -36,6 +37,47 @@ def db_conn():
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
+
+def telegram_send_publication(message: str, image_url: str | None = None):
+    enabled = os.getenv("BOTC_TELEGRAM_ENABLED", "false").lower() in {"1", "true", "yes", "on"}
+    if not enabled:
+        return {"enabled": False, "sent": False}
+
+    token = os.getenv("BOTC_TELEGRAM_BOT_TOKEN", "").strip()
+    chat_id = os.getenv("BOTC_TELEGRAM_CHAT_ID", "").strip()
+    if not token or not chat_id:
+        return {"enabled": True, "sent": False, "error": "Missing BOTC_TELEGRAM_BOT_TOKEN or BOTC_TELEGRAM_CHAT_ID"}
+
+    base = f"https://api.telegram.org/bot{token}"
+
+    try:
+        if image_url:
+            payload = {
+                "chat_id": chat_id,
+                "photo": image_url,
+                "caption": message,
+                "parse_mode": "HTML",
+                "disable_web_page_preview": False,
+            }
+            endpoint = f"{base}/sendPhoto"
+        else:
+            payload = {
+                "chat_id": chat_id,
+                "text": message,
+                "parse_mode": "HTML",
+                "disable_web_page_preview": False,
+            }
+            endpoint = f"{base}/sendMessage"
+
+        req = Request(endpoint, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json"}, method="POST")
+        with urlopen(req, timeout=10) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+            if not body.get("ok"):
+                return {"enabled": True, "sent": False, "error": str(body)}
+        return {"enabled": True, "sent": True}
+    except Exception as e:
+        return {"enabled": True, "sent": False, "error": str(e)}
+
 
 # --- Init DB ---
 with db_conn() as conn:
@@ -399,7 +441,29 @@ async def publish_event(event_id: int, optional_text: str = Form(None), role: st
         ))
         conn.commit()
 
-    return {"status": "published", "guid": guid}
+    web_base = os.getenv("BOTC_PUBLIC_BASE_URL", "").rstrip("/")
+    api_base = os.getenv("BOTC_PUBLIC_API_BASE_URL", "").rstrip("/")
+    event_link = f"{web_base}/events.html?event_id={row['id']}" if web_base else f"/events.html?event_id={row['id']}"
+
+    msg_lines = [
+        f"<b>🎭 [PUBLICACIÓ] {escape(row['name'])}</b>",
+        f"📅 <b>Data:</b> {escape(row['date'] or '-')}",
+        f"📍 <b>Lloc:</b> {escape(row['location'] or '-')}",
+        f"👥 <b>Participants:</b> {row['participant_count'] or 0}",
+        f"🟢 <b>Estat:</b> {escape(row['status'] or 'active')}",
+    ]
+    if optional_text:
+        msg_lines.append(f"💬 <b>Missatge:</b> {escape(optional_text)}")
+    msg_lines.append(f"🔗 <a href=\"{escape(event_link)}\">Obrir event a la web</a>")
+    telegram_message = "\n".join(msg_lines)
+
+    image_url = row["image_url"]
+    if image_url and image_url.startswith("/") and api_base:
+        image_url = f"{api_base}{image_url}"
+
+    tg = telegram_send_publication(telegram_message, image_url=image_url)
+
+    return {"status": "published", "guid": guid, "telegram": tg}
 
 
 @app.get("/rss/events.xml")
