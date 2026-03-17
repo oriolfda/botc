@@ -50,31 +50,47 @@ def telegram_send_publication(message: str, image_url: str | None = None):
 
     base = f"https://api.telegram.org/bot{token}"
 
-    try:
-        if image_url:
-            payload = {
+    def _post(endpoint: str, payload: dict):
+        req = Request(endpoint, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json"}, method="POST")
+        with urlopen(req, timeout=12) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+            if not body.get("ok"):
+                raise RuntimeError(str(body))
+        return body
+
+    message_payload = {
+        "chat_id": chat_id,
+        "text": message,
+        "parse_mode": "HTML",
+        "disable_web_page_preview": False,
+    }
+
+    # Si la imatge és LAN/local, Telegram no la podrà descarregar: enviem text directament
+    if image_url and ("192.168." in image_url or "localhost" in image_url or image_url.startswith("/")):
+        image_url = None
+
+    if image_url:
+        try:
+            photo_payload = {
                 "chat_id": chat_id,
                 "photo": image_url,
                 "caption": message,
                 "parse_mode": "HTML",
                 "disable_web_page_preview": False,
             }
-            endpoint = f"{base}/sendPhoto"
-        else:
-            payload = {
-                "chat_id": chat_id,
-                "text": message,
-                "parse_mode": "HTML",
-                "disable_web_page_preview": False,
-            }
-            endpoint = f"{base}/sendMessage"
+            _post(f"{base}/sendPhoto", photo_payload)
+            return {"enabled": True, "sent": True, "mode": "photo"}
+        except Exception as e:
+            # fallback a text si sendPhoto falla (URL no pública, etc.)
+            try:
+                _post(f"{base}/sendMessage", message_payload)
+                return {"enabled": True, "sent": True, "mode": "text_fallback", "photo_error": str(e)}
+            except Exception as e2:
+                return {"enabled": True, "sent": False, "error": str(e2), "photo_error": str(e)}
 
-        req = Request(endpoint, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json"}, method="POST")
-        with urlopen(req, timeout=10) as resp:
-            body = json.loads(resp.read().decode("utf-8"))
-            if not body.get("ok"):
-                return {"enabled": True, "sent": False, "error": str(body)}
-        return {"enabled": True, "sent": True}
+    try:
+        _post(f"{base}/sendMessage", message_payload)
+        return {"enabled": True, "sent": True, "mode": "text"}
     except Exception as e:
         return {"enabled": True, "sent": False, "error": str(e)}
 
