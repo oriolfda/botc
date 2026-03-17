@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from email.utils import format_datetime
 from xml.sax.saxutils import escape
 from urllib.request import Request, urlopen
+from urllib.error import HTTPError
 
 app = FastAPI()
 
@@ -91,6 +92,12 @@ def telegram_send_publication(message: str, image_url: str | None = None):
     try:
         _post(f"{base}/sendMessage", message_payload)
         return {"enabled": True, "sent": True, "mode": "text"}
+    except HTTPError as e:
+        try:
+            body = e.read().decode("utf-8", errors="ignore")
+        except Exception:
+            body = ""
+        return {"enabled": True, "sent": False, "error": f"HTTP {e.code}", "details": body}
     except Exception as e:
         return {"enabled": True, "sent": False, "error": str(e)}
 
