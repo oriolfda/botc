@@ -1,5 +1,6 @@
 name: Sync QA to Forgejo
 
+# GitHub QA is the source branch for automatic synchronization to Forgejo QA.
 on:
   push:
     branches:
