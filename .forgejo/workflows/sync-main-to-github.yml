@@ -1,0 +1,37 @@
+name: Sync Forgejo main to GitHub main
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  sync-main:
+    runs-on: docker
+    container:
+      image: alpine:3.22
+    steps:
+      - name: Install Git and SSH
+        run: apk add --no-cache git openssh-client
+
+      - name: Configure GitHub SSH access
+        env:
+          BOTC_MAIN_SSH_KEY: ${{ secrets.BOTC_MAIN_SSH_KEY }}
+        run: |
+          set -eu
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$BOTC_MAIN_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -t ed25519 github.com > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Push only main to GitHub
+        run: |
+          set -eu
+          git init /tmp/botc
+          cd /tmp/botc
+          git remote add forgejo "$FORGEJO_SERVER_URL/${FORGEJO_REPOSITORY}.git"
+          git fetch --no-tags forgejo refs/heads/main:refs/remotes/forgejo/main
+          git remote add github git@github.com:oriolfda/botc.git
+          git push github refs/remotes/forgejo/main:refs/heads/main
