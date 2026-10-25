@@ -9,9 +9,6 @@ jobs:
   sync-main:
     runs-on: docker
     steps:
-      - name: Install Git and SSH
-        run: apk add --no-cache git openssh-client
-
       - name: Checkout Forgejo main
         uses: actions/checkout@v4
         with:
