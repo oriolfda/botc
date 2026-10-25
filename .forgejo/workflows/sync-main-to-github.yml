@@ -10,9 +10,15 @@ jobs:
     runs-on: docker
     container:
       image: alpine:3.22
+
     steps:
       - name: Install Git and SSH
         run: apk add --no-cache git openssh-client
+
+      - name: Checkout Forgejo main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: Configure GitHub SSH access
         env:
@@ -29,9 +35,5 @@ jobs:
       - name: Push only main to GitHub
         run: |
           set -eu
-          git init /tmp/botc
-          cd /tmp/botc
-          git remote add forgejo "$FORGEJO_SERVER_URL/${FORGEJO_REPOSITORY}.git"
-          git fetch --no-tags forgejo refs/heads/main:refs/remotes/forgejo/main
           git remote add github git@github.com:oriolfda/botc.git
-          git push github refs/remotes/forgejo/main:refs/heads/main
+          git push github HEAD:refs/heads/main
