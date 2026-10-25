@@ -12,7 +12,7 @@ jobs:
       - name: Checkout Forgejo main
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
 
       - name: Configure GitHub SSH access
         env:
