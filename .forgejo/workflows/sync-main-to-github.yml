@@ -8,9 +8,6 @@ on:
 jobs:
   sync-main:
     runs-on: docker
-    container:
-      image: alpine:3.22
-
     steps:
       - name: Install Git and SSH
         run: apk add --no-cache git openssh-client
