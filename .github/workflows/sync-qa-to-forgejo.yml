@@ -1,0 +1,29 @@
+name: Sync QA to Forgejo
+
+on:
+  push:
+    branches:
+      - qa
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout QA
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Forgejo SSH
+        env:
+          FORGEJO_QA_SSH_KEY: ${{ secrets.FORGEJO_QA_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$FORGEJO_QA_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p 2222 git.uriester.cat >> ~/.ssh/known_hosts
+
+      - name: Push QA to Forgejo
+        run: |
+          git remote add forgejo ssh://git@git.uriester.cat:2222/Uriester/botc.git
+          git push forgejo HEAD:refs/heads/qa
