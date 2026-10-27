@@ -18,13 +18,9 @@ jobs:
           set -euo pipefail
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-
           printf '%s\n' "$T01_DEPLOY_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-
-          cat > ~/.ssh/known_hosts <<'EOF_HOST'
-192.168.0.220 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINfyG2dvwwuH+5Rl5pkndNpQ3CU1Yw8cRTp04jpDSkUc
-EOF_HOST
+          printf '%s\n' '192.168.0.220 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINfyG2dvwwuH+5Rl5pkndNpQ3CU1Yw8cRTp04jpDSkUc' > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
       - name: Deploy BOTC QA
