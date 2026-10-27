@@ -67,12 +67,7 @@ function resolveApiBase(){
   if (BOTC_CONFIG.API_BASE) {
     return { base: BOTC_CONFIG.API_BASE, prefix: BOTC_CONFIG.API_PREFIX ?? "" };
   }
-  if (!isInternal) return { base: window.location.origin, prefix: "/api" };
-  if (ENV === "PROD") return { base: "http://192.168.0.210:30081", prefix: "" };
-  if (ENV === "TEST") return { base: "http://192.168.0.210:30082", prefix: "" };
-  if (location.port === "30084") return { base: "http://192.168.0.210:30082", prefix: "" };
-  if (location.port === "8080")  return { base: "http://192.168.0.210:30081", prefix: "" };
-  return { base: "http://192.168.0.210:30081", prefix: "" };
+  return { base: window.location.origin, prefix: "/api" };
 }
 
 const { base: API_BASE, prefix: API_PREFIX } = resolveApiBase();
@@ -92,8 +87,12 @@ async function loadGroups(){
   try{
     const res=await fetch(`${API_BASE}${API_PREFIX}/groups`);
     const g=await res.json(); if(!Array.isArray(g)) return;
-    g.forEach(it=>{
 
+    const none=document.createElement('option');
+    none.value=''; none.textContent='-- Sense grup --';
+    sel.appendChild(none);
+
+    g.forEach(it=>{
       const o=document.createElement('option');
       o.value=it.id; o.textContent=it.name;
       if(access && access.group_id && access.group_id===it.id && access.role==="user") o.selected=true;

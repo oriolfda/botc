@@ -1,0 +1,22 @@
+name: Sync QA to Forgejo
+
+# GitHub QA is the source branch for automatic synchronization to Forgejo QA.
+on:
+  push:
+    branches:
+      - qa
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout QA
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push QA to Forgejo
+        env:
+          FORGEJO_QA_TOKEN: ${{ secrets.FORGEJO_QA_TOKEN }}
+        run: |
+          git push "https://oriol:${FORGEJO_QA_TOKEN}@git.uriester.cat/Uriester/botc.git" HEAD:refs/heads/qa

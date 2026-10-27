@@ -1,0 +1,28 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    environment:
+      BOTC_DB_PATH: /app/data/botc.db
+      BOTC_IMG_DIR: /app/data/images
+      BOTC_CORS_ORIGINS: "*"
+      BOTC_PUBLICATIONS_ENABLED: ${BOTC_PUBLICATIONS_ENABLED:-false}
+      BOTC_PUBLIC_BASE_URL: ${BOTC_PUBLIC_BASE_URL:-}
+      BOTC_PUBLIC_API_BASE_URL: ${BOTC_PUBLIC_API_BASE_URL:-}
+      BOTC_TELEGRAM_ENABLED: ${BOTC_TELEGRAM_ENABLED:-false}
+      BOTC_TELEGRAM_BOT_TOKEN: ${BOTC_TELEGRAM_BOT_TOKEN:-}
+      BOTC_TELEGRAM_CHAT_ID: ${BOTC_TELEGRAM_CHAT_ID:-}
+    volumes:
+      - ./data:/app/data
+    expose:
+      - "8000"
+
+  frontend:
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${BOTC_HTTP_PORT:-30084}:80"

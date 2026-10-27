@@ -444,6 +444,8 @@ async def set_admin_password(password: str = Form(...)):
 # --- PUBLICATIONS / RSS ---
 @app.post("/events/{event_id}/publish")
 async def publish_event(event_id: int, optional_text: str = Form(None), role: str = Form(None)):
+    if os.getenv("BOTC_PUBLICATIONS_ENABLED", "true").lower() not in {"1", "true", "yes", "on"}:
+        raise HTTPException(status_code=503, detail="Publications are disabled in this environment")
     if role not in {"admin", "superadmin"}:
         raise HTTPException(status_code=403, detail="Only admin/superadmin can publish")
 
@@ -532,6 +534,8 @@ async def delete_publication(publication_id: int, role: str):
 @app.get("/rss/events.xml")
 @app.get("/api/rss/events.xml")
 async def rss_events():
+    if os.getenv("BOTC_PUBLICATIONS_ENABLED", "true").lower() not in {"1", "true", "yes", "on"}:
+        raise HTTPException(status_code=503, detail="Publications are disabled in this environment")
     with db_conn() as conn:
         c = conn.cursor()
         c.execute("""
