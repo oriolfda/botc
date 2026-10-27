@@ -1,0 +1,38 @@
+name: Deploy QA to T01
+
+on:
+  push:
+    branches:
+      - qa
+
+jobs:
+  deploy:
+    runs-on: docker
+
+    steps:
+      - name: Prepare SSH
+        shell: bash
+        env:
+          T01_DEPLOY_KEY: ${{ secrets.T01_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          printf '%s\n' "$T01_DEPLOY_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+          cat > ~/.ssh/known_hosts <<'EOF_HOST'
+192.168.0.220 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDUMMY
+EOF_HOST
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy BOTC QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh \
+            -i ~/.ssh/id_ed25519 \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            root@192.168.0.220 deploy
