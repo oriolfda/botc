@@ -23,7 +23,7 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
 
           cat > ~/.ssh/known_hosts <<'EOF_HOST'
-192.168.0.220 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDUMMY
+192.168.0.220 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINfyG2dvwwuH+5Rl5pkndNpQ3CU1Yw8cRTp04jpDSkUc
 EOF_HOST
           chmod 600 ~/.ssh/known_hosts
 
