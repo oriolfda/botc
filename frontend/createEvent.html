@@ -4,137 +4,36 @@
 <meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Crear / Editar Event</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Arial;background:#121212;color:#f0f0f0;padding:20px}
-.header{display:flex;justify-content:space-between;align-items:flex-end;max-width:500px;margin:0 auto 10px auto}
-.header-left{flex:1}
-.header-right{display:flex;justify-content:flex-end}
-h2{color:#2e8b57;margin:0;text-align:left}
-form{display:flex;flex-direction:column;gap:10px;max-width:500px;margin:auto}
-input,select,textarea{padding:10px;border-radius:6px;border:1px solid #444;background:#222;color:#fff;width:100%}
-button{background:#2e8b57;color:#fff;border:none;padding:10px;border-radius:6px;cursor:pointer}
-a.back{background:#2e8b57;color:#fff;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:0.8rem;text-decoration:none}
-.success{color:#4caf50;margin-top:8px;text-align:center}
-.error{color:#ff6b6b;margin-top:8px;text-align:center}
-</style>
-<script src="env.js"></script>
-</head>
+*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial;background:#121212;color:#f0f0f0;padding:20px}.header{display:flex;justify-content:space-between;align-items:flex-end;max-width:500px;margin:0 auto 10px}.header-left{flex:1}.header-right{display:flex;justify-content:flex-end}h2{color:#2e8b57;margin:0;text-align:left}form{display:flex;flex-direction:column;gap:10px;max-width:500px;margin:auto}input,select,textarea{padding:10px;border-radius:6px;border:1px solid #444;background:#222;color:#fff;width:100%}select:disabled{opacity:.75}button{background:#2e8b57;color:#fff;border:none;padding:10px;border-radius:6px;cursor:pointer}a.back{background:#2e8b57;color:#fff;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:.8rem;text-decoration:none}.success{color:#4caf50;margin-top:8px;text-align:center}.error{color:#ff6b6b;margin-top:8px;text-align:center}
+</style><script src="env.js"></script></head>
 <body>
-<div class="header">
-  <div class="header-left">
-    <h2>Crear / Editar Event</h2>
-  </div>
-  <div class="header-right">
-    <a class="back" id="backLink" href="events.html">Enrere</a>
-  </div>
-</div>
-
+<div class="header"><div class="header-left"><h2>Crear / Editar Event</h2></div><div class="header-right"><a class="back" id="backLink" href="events.html">Enrere</a></div></div>
 <form id="eventForm" enctype="multipart/form-data">
-  <input type="text" name="name" id="name" placeholder="Nom de l'event" required>
-  <input type="text" name="date" id="date" placeholder="Data (ex: 1 de novembre - 17h)">
-  <input type="text" name="location" id="location" placeholder="Ubicació">
-  <select name="group_id" id="groupSelect">
-    <option value="">-- Sense grup --</option>
-  </select>
-  <input type="number" name="min_participants" id="min_participants" placeholder="Participants mínims">
-  <input type="number" name="max_participants" id="max_participants" placeholder="Participants màxims">
-  <select name="status" id="status">
-    <option value="active">Actiu</option>
-    <option value="inactive">Inactiu</option>
-  </select>
-  <input type="text" name="codeEvt" id="codeEvt" placeholder="Codi d'accés a l'event (opcional)">
-  <input type="file" name="image" id="image">
-  <button type="submit">Desar</button>
-</form>
-
-<div id="msg"></div>
-
+<input type="text" name="name" id="name" placeholder="Nom de l'event" required><input type="text" name="date" id="date" placeholder="Data (ex: 1 de novembre - 17h)"><input type="text" name="location" id="location" placeholder="Ubicació">
+<select name="group_id" id="groupSelect"><option value="">-- Sense grup --</option></select>
+<input type="number" name="min_participants" id="min_participants" placeholder="Participants mínims"><input type="number" name="max_participants" id="max_participants" placeholder="Participants màxims">
+<select name="status" id="status"><option value="active">Actiu</option><option value="inactive">Inactiu</option></select><input type="text" name="codeEvt" id="codeEvt" placeholder="Codi d'accés a l'event (opcional)"><input type="file" name="image" id="image"><button type="submit">Desar</button>
+</form><div id="msg"></div>
 <script>
-const BOTC_CONFIG = window.BOTC_CONFIG || {};
-const urlEnv = new URLSearchParams(window.location.search).get("env");
-const ENV = (urlEnv || BOTC_CONFIG.ENV || "AUTO").toUpperCase();
-const isInternal = location.hostname.startsWith("192.168.") || location.hostname === "localhost";
-
-function resolveApiBase(){
-  if (BOTC_CONFIG.API_BASE) {
-    return { base: BOTC_CONFIG.API_BASE, prefix: BOTC_CONFIG.API_PREFIX ?? "" };
-  }
-  return { base: window.location.origin, prefix: "/api" };
-}
-
-const { base: API_BASE, prefix: API_PREFIX } = resolveApiBase();
-const params = new URLSearchParams(window.location.search);
-const eventId = params.get("event_id");
-document.getElementById('backLink').href = `events.html?env=${encodeURIComponent(ENV)}`;
-
+const BOTC_CONFIG=window.BOTC_CONFIG||{};const params=new URLSearchParams(window.location.search);const urlEnv=params.get('env');const ENV=(urlEnv||BOTC_CONFIG.ENV||'AUTO').toUpperCase();
+function resolveApiBase(){if(BOTC_CONFIG.API_BASE)return{base:BOTC_CONFIG.API_BASE,prefix:BOTC_CONFIG.API_PREFIX??''};return{base:window.location.origin,prefix:'/api'};}const {base:API_BASE,prefix:API_PREFIX}=resolveApiBase();
+const eventId=params.get('event_id');document.getElementById('backLink').href=`events.html?env=${encodeURIComponent(ENV)}`;
+let access=null;try{access=JSON.parse(localStorage.getItem('botc-access')||'null');}catch(_){}
+const isSuperadmin=access?.role==='superadmin';const isGroupAdmin=access?.role==='admin'&&Number.isInteger(Number(access?.group_id));
+if(!isSuperadmin&&!isGroupAdmin){document.getElementById('eventForm').style.display='none';const m=document.getElementById('msg');m.textContent="No tens permisos d'administració.";m.className='error';}
 async function loadGroups(){
-  const sel=document.getElementById('groupSelect');
-  try{
-    const res=await fetch(`${API_BASE}${API_PREFIX}/groups`);
-    if(!res.ok) throw new Error("No s'han pogut carregar els grups");
-    const g=await res.json();
-    g.forEach(gr=>{
-      const opt=document.createElement('option');
-      opt.value=gr.id;
-      opt.textContent=gr.name;
-      sel.appendChild(opt);
-    });
-  }catch(e){console.error(e);}
+ const sel=document.getElementById('groupSelect');
+ if(isGroupAdmin){const opt=document.createElement('option');opt.value=access.group_id;opt.textContent=access.group||`Grup ${access.group_id}`;sel.innerHTML='';sel.appendChild(opt);sel.value=String(access.group_id);sel.disabled=true;return;}
+ try{const res=await fetch(`${API_BASE}${API_PREFIX}/groups`);if(!res.ok)throw new Error();const groups=await res.json();groups.forEach(gr=>{const opt=document.createElement('option');opt.value=gr.id;opt.textContent=gr.name;sel.appendChild(opt);});}catch(e){console.error(e);}
 }
-
 async function loadEvent(){
-  if(!eventId) return;
-  try{
-    const res=await fetch(`${API_BASE}${API_PREFIX}/events/${eventId}`);
-    if(!res.ok) return;
-    const ev=await res.json();
-    document.getElementById('name').value=ev.name||"";
-    document.getElementById('date').value=ev.date||"";
-    document.getElementById('location').value=ev.location||"";
-    document.getElementById('groupSelect').value=ev.group_id||"";
-    document.getElementById('min_participants').value=ev.min_participants||"";
-    document.getElementById('max_participants').value=ev.max_participants||"";
-    document.getElementById('status').value=ev.status||"active";
-    document.getElementById('codeEvt').value=ev.codeEvt||"";
-  }catch(e){console.error(e);}
+ if(!eventId)return;
+ try{const res=await fetch(`${API_BASE}${API_PREFIX}/events/${eventId}`);if(!res.ok)throw new Error();const ev=await res.json();if(isGroupAdmin&&Number(ev.group_id)!==Number(access.group_id)){document.getElementById('eventForm').style.display='none';const m=document.getElementById('msg');m.textContent="No pots editar events d'un altre grup.";m.className='error';return;}document.getElementById('name').value=ev.name||'';document.getElementById('date').value=ev.date||'';document.getElementById('location').value=ev.location||'';document.getElementById('groupSelect').value=isGroupAdmin?String(access.group_id):(ev.group_id||'');document.getElementById('min_participants').value=ev.min_participants||'';document.getElementById('max_participants').value=ev.max_participants||'';document.getElementById('status').value=ev.status||'active';document.getElementById('codeEvt').value=ev.codeEvt||'';}catch(e){console.error(e);}
 }
-
-document.getElementById("eventForm").addEventListener("submit", async (e)=>{
-  e.preventDefault();
-  const msg=document.getElementById("msg");
-  msg.textContent=""; msg.className="";
-  const formData=new FormData(e.target);
-
-  // 🔧 Elimina camps buits que no són obligatoris
-  ["group_id","min_participants","max_participants","codeEvt"].forEach(k=>{
-    if(!formData.get(k)) formData.delete(k);
-  });
-
-  if(!formData.get("name")){
-    msg.textContent="El nom és obligatori";
-    msg.className="error";
-    return;
-  }
-
-  const url=`${API_BASE}${API_PREFIX}/events${eventId?"/"+eventId:""}`;
-  const method=eventId?"PUT":"POST";
-  try{
-    const res=await fetch(url,{method,body:formData});
-    if(!res.ok){
-      const t=await res.text();
-      throw new Error(t);
-    }
-    msg.textContent="Event desat correctament";
-    msg.className="success";
-  }catch(err){
-    console.error(err);
-    msg.textContent="Error al desar l'event";
-    msg.className="error";
-  }
+document.getElementById('eventForm').addEventListener('submit',async e=>{
+ e.preventDefault();const msg=document.getElementById('msg');msg.textContent='';msg.className='';if(!isSuperadmin&&!isGroupAdmin)return;
+ const formData=new FormData(e.target);if(isGroupAdmin)formData.set('group_id',String(access.group_id));['group_id','min_participants','max_participants','codeEvt'].forEach(k=>{if(!formData.get(k))formData.delete(k);});if(!formData.get('name')){msg.textContent='El nom és obligatori';msg.className='error';return;}
+ const url=`${API_BASE}${API_PREFIX}/events${eventId?'/'+eventId:''}`;const method=eventId?'PUT':'POST';try{const res=await fetch(url,{method,body:formData});if(!res.ok)throw new Error(await res.text());msg.textContent='Event desat correctament';msg.className='success';}catch(err){console.error(err);msg.textContent="Error al desar l'event";msg.className='error';}
 });
-
-(async function(){await loadGroups();await loadEvent();})();
-</script>
-</body>
-</html>
-
+(async function(){if(isSuperadmin||isGroupAdmin){await loadGroups();await loadEvent();}})();
+</script></body></html>
