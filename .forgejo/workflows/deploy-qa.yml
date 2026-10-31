@@ -23,7 +23,7 @@ jobs:
           printf '%s\n' '192.168.0.231 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGMEHSXrPKsHqmdcnMibvMqqjDEo+DeOA8HBHsf+W0qZ' > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
-      - name: Check T01 Deploy Engine
+      - name: Deploy BOTC to T01
         shell: bash
         run: |
           set -euo pipefail
@@ -31,4 +31,4 @@ jobs:
             -i ~/.ssh/id_ed25519 \
             -o IdentitiesOnly=yes \
             -o StrictHostKeyChecking=yes \
-            root@192.168.0.231 status
+            root@192.168.0.231 deploy botc
