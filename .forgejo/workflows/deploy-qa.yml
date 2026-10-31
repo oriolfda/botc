@@ -20,10 +20,10 @@ jobs:
           chmod 700 ~/.ssh
           printf '%s\n' "$T01_DEPLOY_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          printf '%s\n' '192.168.0.220 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINfyG2dvwwuH+5Rl5pkndNpQ3CU1Yw8cRTp04jpDSkUc' > ~/.ssh/known_hosts
+          printf '%s\n' '192.168.0.231 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGMEHSXrPKsHqmdcnMibvMqqjDEo+DeOA8HBHsf+W0qZ' > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
-      - name: Deploy BOTC QA
+      - name: Check T01 Deploy Engine
         shell: bash
         run: |
           set -euo pipefail
@@ -31,4 +31,4 @@ jobs:
             -i ~/.ssh/id_ed25519 \
             -o IdentitiesOnly=yes \
             -o StrictHostKeyChecking=yes \
-            root@192.168.0.220 deploy
+            root@192.168.0.231 status
